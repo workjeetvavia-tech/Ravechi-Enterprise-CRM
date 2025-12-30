@@ -1,12 +1,6 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-// Access environment variables. 
-// Note: In Vite/Create-React-App these are import.meta.env or process.env. 
-// Since this is a generic setup often used with bundlers, we use process.env.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://iryptznehudfgqffklig.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyeXB0em5laHVkZmdxZmZrbGlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjU1NTMsImV4cCI6MjA4MjY0MTU1M30.MuJdZkF_MMiy0jsxLWQJ3WbuSe0EQUv9NDEko3PL0DE';
 
-export const supabase = (supabaseUrl && supabaseKey) 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : null;
+export const supabase = createClient(supabaseUrl, supabaseKey);

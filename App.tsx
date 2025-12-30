@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AiAssistant from './pages/AiAssistant';
 import { User, getCurrentUser, clearUserSession } from './services/authService';
+import { supabase } from './services/supabaseClient';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,26 +21,58 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUser = getCurrentUser();
-    if (storedUser) {
-      setCurrentUser(storedUser);
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
+    // 1. Check initial session
+    const checkSession = async () => {
+        try {
+            const user = await getCurrentUser();
+            if (user) {
+                setCurrentUser(user);
+                setIsAuthenticated(true);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    checkSession();
+
+    // 2. Listen for auth changes (Login, Logout, Token Refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+             // Map the session user to our app user format manually or refetch
+             const appUser: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                role: session.user.user_metadata?.role || 'employee',
+                avatar: session.user.user_metadata?.name ? session.user.user_metadata.name.substring(0, 2).toUpperCase() : 'U'
+             };
+             setCurrentUser(appUser);
+             setIsAuthenticated(true);
+        } else if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+            setCurrentView('dashboard');
+            setAuthPage('login');
+        }
+    });
+
+    return () => {
+        subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = (user: User) => {
+    // Handled by onAuthStateChange, but we can set state immediately for better UX
     setCurrentUser(user);
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    clearUserSession();
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setCurrentView('dashboard');
-    setAuthPage('login');
+  const handleLogout = async () => {
+    await clearUserSession();
+    // State update handled by onAuthStateChange
   };
 
   const renderContent = () => {

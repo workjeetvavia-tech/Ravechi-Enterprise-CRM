@@ -1,15 +1,14 @@
 import { Lead, LeadStatus, Product, ProductCategory } from "../types";
 import { supabase } from "./supabaseClient";
 
-// LocalStorage Keys
+// LocalStorage Keys (Fallback/Cache)
 const LEADS_KEY = 'ravechi_leads_v2';
 const PRODUCTS_KEY = 'ravechi_products_v2';
 
-// In-Memory Cache for LocalStorage
+// In-Memory Cache
 let leadsCache: Lead[] = [];
 let productsCache: Product[] = [];
 
-// Initialize LocalStorage Data
 const initLocalData = () => {
     try {
         const storedLeads = localStorage.getItem(LEADS_KEY);
@@ -22,7 +21,6 @@ const initLocalData = () => {
     }
 };
 
-// Only init local data if we might need it (or just always init it, it's cheap)
 initLocalData();
 
 // --- EVENT SYSTEM ---
@@ -36,11 +34,10 @@ const notify = (type: 'leads' | 'products') => {
     listeners[type].forEach(cb => cb());
 };
 
-// Real-time Subscription (Hybrid)
+// Real-time Subscription
 export const subscribeToData = (type: 'leads' | 'products', callback: ChangeCallback) => {
     listeners[type].push(callback);
     
-    // If Supabase is active, set up real-time subscription
     let supabaseSubscription: any = null;
     if (supabase) {
         const table = type === 'leads' ? 'leads' : 'products';
@@ -60,43 +57,65 @@ export const subscribeToData = (type: 'leads' | 'products', callback: ChangeCall
     };
 };
 
-// Listen for storage changes (Cross-tab sync for LocalStorage)
-if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (e) => {
-        if (e.key === LEADS_KEY) {
-            leadsCache = JSON.parse(e.newValue || '[]');
-            notify('leads');
-        }
-        if (e.key === PRODUCTS_KEY) {
-            productsCache = JSON.parse(e.newValue || '[]');
-            notify('products');
-        }
-    });
-}
-
 // --- LEADS OPERATIONS ---
 
 export const getLeads = async (): Promise<Lead[]> => {
   if (supabase) {
-      const { data, error } = await supabase.from('leads').select('*').order('id', { ascending: false });
+      // Order by created_at for chronological sorting
+      const { data, error } = await supabase
+          .from('leads')
+          .select('*')
+          .order('created_at', { ascending: false });
+      
       if (error) {
           console.error("Supabase error fetching leads:", error);
           return [];
       }
-      return data as Lead[] || [];
+      
+      // Robust mapping to ensure type safety
+      return (data || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          company: item.company,
+          email: item.email || '',
+          phone: item.phone || '',
+          state: item.state || '',
+          status: item.status as LeadStatus,
+          value: Number(item.value) || 0,
+          notes: item.notes || '',
+          lastContact: item.lastContact || new Date().toISOString().split('T')[0],
+          interest: Array.isArray(item.interest) ? item.interest : []
+      })) as Lead[];
   }
   return new Promise((resolve) => setTimeout(() => resolve([...leadsCache]), 300));
 };
 
 export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
   if (supabase) {
-      // Allow Supabase to generate ID if configured, or generate one here
-      // For compatibility with the interface which expects ID, we might let DB handle it 
-      // but we need to return the full object.
-      // We'll generate a UUID-like string if Supabase doesn't return one immediately or just rely on return.
-      const { data, error } = await supabase.from('leads').insert([lead]).select().single();
+      // Ensure complex types like interest array are passed correctly
+      const payload = {
+          ...lead,
+          interest: lead.interest || []
+      };
+      
+      const { data, error } = await supabase.from('leads').insert([payload]).select().single();
       if (error) throw error;
-      return data as Lead;
+      
+      // Map returned data to safe Lead object
+      const item = data;
+      return {
+          id: item.id,
+          name: item.name,
+          company: item.company,
+          email: item.email || '',
+          phone: item.phone || '',
+          state: item.state || '',
+          status: item.status as LeadStatus,
+          value: Number(item.value) || 0,
+          notes: item.notes || '',
+          lastContact: item.lastContact || new Date().toISOString().split('T')[0],
+          interest: Array.isArray(item.interest) ? item.interest : []
+      };
   }
   
   return new Promise((resolve) => {
@@ -110,7 +129,8 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
 
 export const updateLead = async (updatedLead: Lead): Promise<Lead> => {
   if (supabase) {
-      const { error } = await supabase.from('leads').update(updatedLead).eq('id', updatedLead.id);
+      const { id, ...updates } = updatedLead;
+      const { error } = await supabase.from('leads').update(updates).eq('id', id);
       if (error) throw error;
       return updatedLead;
   }
@@ -157,12 +177,24 @@ export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<
 
 export const getProducts = async (): Promise<Product[]> => {
   if (supabase) {
-      const { data, error } = await supabase.from('products').select('*').order('id', { ascending: false });
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
       if (error) {
           console.error("Supabase error fetching products:", error);
           return [];
       }
-      return data as Product[] || [];
+      
+      return (data || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          sku: item.sku,
+          category: item.category as ProductCategory,
+          price: Number(item.price) || 0,
+          stock: Number(item.stock) || 0
+      })) as Product[];
   }
   return new Promise((resolve) => setTimeout(() => resolve([...productsCache]), 300));
 };
@@ -171,7 +203,16 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
     if (supabase) {
         const { data, error } = await supabase.from('products').insert([product]).select().single();
         if (error) throw error;
-        return data as Product;
+        
+        const item = data;
+        return {
+          id: item.id,
+          name: item.name,
+          sku: item.sku,
+          category: item.category as ProductCategory,
+          price: Number(item.price) || 0,
+          stock: Number(item.stock) || 0
+        };
     }
 
     return new Promise((resolve) => {

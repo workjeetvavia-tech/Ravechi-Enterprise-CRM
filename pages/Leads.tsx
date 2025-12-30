@@ -131,7 +131,7 @@ const Leads: React.FC = () => {
           <input
             type="text"
             placeholder="Search leads by name, company..."
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700 placeholder-slate-400 bg-white"
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 placeholder-slate-400 bg-white"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -142,7 +142,7 @@ const Leads: React.FC = () => {
             {/* Status Filter */}
             <div className="relative">
                 <select
-                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 appearance-none cursor-pointer"
+                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900 appearance-none cursor-pointer"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                 >
@@ -157,7 +157,7 @@ const Leads: React.FC = () => {
             {/* State Filter */}
             <div className="relative">
                 <select
-                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 appearance-none cursor-pointer"
+                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900 appearance-none cursor-pointer"
                     value={stateFilter}
                     onChange={(e) => setStateFilter(e.target.value)}
                 >
@@ -175,7 +175,7 @@ const Leads: React.FC = () => {
                 <input 
                     type="number"
                     placeholder="Min Value"
-                    className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700 placeholder-slate-400 bg-white"
+                    className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 placeholder-slate-400 bg-white"
                     value={minValueFilter}
                     onChange={(e) => setMinValueFilter(e.target.value)}
                 />
@@ -184,7 +184,7 @@ const Leads: React.FC = () => {
             {/* Interest Filter */}
             <div className="relative">
                 <select
-                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 appearance-none cursor-pointer"
+                    className="w-full pl-3 pr-10 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900 appearance-none cursor-pointer"
                     value={interestFilter}
                     onChange={(e) => setInterestFilter(e.target.value)}
                 >

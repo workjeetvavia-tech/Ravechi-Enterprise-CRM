@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient';
+
 export interface User {
   id: string;
   name: string;
@@ -6,59 +8,59 @@ export interface User {
   avatar?: string;
 }
 
-const STORAGE_KEY = 'gujtech_user_session';
-
-export const getCurrentUser = (): User | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch (e) {
-    return null;
-  }
+// Map Supabase user object to our App's User interface
+const mapSupabaseUser = (u: any): User | null => {
+    if (!u) return null;
+    return {
+        id: u.id,
+        email: u.email || '',
+        name: u.user_metadata?.name || u.email?.split('@')[0] || 'User',
+        role: u.user_metadata?.role || 'employee',
+        avatar: u.user_metadata?.name ? u.user_metadata.name.substring(0, 2).toUpperCase() : 'U'
+    };
 };
 
-export const saveUserSession = (user: User) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-};
-
-export const clearUserSession = () => {
-  localStorage.removeItem(STORAGE_KEY);
+export const getCurrentUser = async (): Promise<User | null> => {
+    const { data } = await supabase.auth.getUser();
+    return mapSupabaseUser(data.user);
 };
 
 export const loginUser = async (email: string, password: string): Promise<User> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Mock login logic: if email contains 'admin', grant admin role, otherwise employee
-      const role = email.toLowerCase().includes('admin') ? 'admin' : 'employee';
-      const user: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: email.split('@')[0].toUpperCase(),
-        email: email,
-        role: role,
-        avatar: role === 'admin' ? 'JD' : 'U'
-      };
-      
-      saveUserSession(user);
-      resolve(user);
-    }, 800);
-  });
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    if (!data.user) throw new Error("Login failed");
+    return mapSupabaseUser(data.user)!;
 };
 
 export const signupUser = async (name: string, email: string, password: string, role: 'admin' | 'employee'): Promise<User> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const user: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: name,
-        email: email,
-        role: role,
-        avatar: name.substring(0, 2).toUpperCase()
-      };
-      
-      saveUserSession(user);
-      resolve(user);
-    }, 800);
-  });
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                name,
+                role
+            }
+        }
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    // Note: If email confirmation is enabled in Supabase, data.user might be null or session null
+    if (!data.user) throw new Error("Signup successful, but user data is missing. Please check your email for confirmation.");
+    
+    return mapSupabaseUser(data.user)!;
+};
+
+export const clearUserSession = async () => {
+    await supabase.auth.signOut();
 };

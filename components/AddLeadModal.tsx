@@ -102,7 +102,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <input 
                             required
                             type="text" 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.name || ''}
                             onChange={e => setNewLead({...newLead, name: e.target.value})}
                         />
@@ -112,7 +112,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <input 
                             required
                             type="text" 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.company || ''}
                             onChange={e => setNewLead({...newLead, company: e.target.value})}
                         />
@@ -123,7 +123,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
                         <input 
                             type="email" 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.email || ''}
                             onChange={e => setNewLead({...newLead, email: e.target.value})}
                         />
@@ -132,7 +132,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
                         <input 
                             type="text" 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.phone || ''}
                             onChange={e => setNewLead({...newLead, phone: e.target.value})}
                         />
@@ -144,7 +144,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <input 
                             type="text" 
                             placeholder="e.g. Gujarat"
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.state || ''}
                             onChange={e => setNewLead({...newLead, state: e.target.value})}
                         />
@@ -152,7 +152,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                         <select 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-white"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-white text-slate-900"
                             value={newLead.status}
                             onChange={e => setNewLead({...newLead, status: e.target.value as LeadStatus})}
                         >
@@ -164,7 +164,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <label className="block text-sm font-medium text-slate-700 mb-1">Est. Value (₹)</label>
                         <input 
                             type="number" 
-                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                             value={newLead.value}
                             onChange={e => setNewLead({...newLead, value: Number(e.target.value)})}
                         />
@@ -174,7 +174,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         <input 
                         type="text" 
                         placeholder="e.g. Laptops, A4 Paper"
-                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                         value={interestInput}
                         onChange={e => setInterestInput(e.target.value)}
                         />
@@ -182,7 +182,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                 <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                         <textarea 
-                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow text-slate-900 bg-white"
                         rows={3}
                         value={newLead.notes || ''}
                         onChange={e => setNewLead({...newLead, notes: e.target.value})}

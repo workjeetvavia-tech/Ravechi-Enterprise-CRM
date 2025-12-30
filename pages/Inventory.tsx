@@ -136,7 +136,7 @@ const Inventory: React.FC = () => {
                 <input
                     type="text"
                     placeholder="Search by SKU, Name..."
-                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -145,7 +145,7 @@ const Inventory: React.FC = () => {
             {/* Category Filter */}
             <div className="relative min-w-[200px]">
                 <select 
-                    className="w-full pl-4 pr-10 py-2 border border-slate-300 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 cursor-pointer"
+                    className="w-full pl-4 pr-10 py-2 border border-slate-300 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900 cursor-pointer"
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
                 >
@@ -160,7 +160,7 @@ const Inventory: React.FC = () => {
             {/* Stock Filter */}
             <div className="relative min-w-[180px]">
                 <select 
-                    className="w-full pl-4 pr-10 py-2 border border-slate-300 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700 cursor-pointer"
+                    className="w-full pl-4 pr-10 py-2 border border-slate-300 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-900 cursor-pointer"
                     value={stockFilter}
                     onChange={(e) => setStockFilter(e.target.value)}
                 >
@@ -251,7 +251,7 @@ const Inventory: React.FC = () => {
                             <input 
                                 required
                                 type="text" 
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-900 bg-white"
                                 value={newProduct.name}
                                 onChange={e => setNewProduct({...newProduct, name: e.target.value})}
                             />
@@ -261,7 +261,7 @@ const Inventory: React.FC = () => {
                             <input 
                                 required
                                 type="text" 
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-900 bg-white"
                                 value={newProduct.sku}
                                 onChange={e => setNewProduct({...newProduct, sku: e.target.value})}
                             />
@@ -269,7 +269,7 @@ const Inventory: React.FC = () => {
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                             <select 
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-900 bg-white"
                                 value={newProduct.category}
                                 onChange={e => setNewProduct({...newProduct, category: e.target.value as ProductCategory})}
                             >
@@ -282,7 +282,7 @@ const Inventory: React.FC = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
                             <input 
                                 type="number" 
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-900 bg-white"
                                 value={newProduct.price}
                                 onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})}
                             />
@@ -291,7 +291,7 @@ const Inventory: React.FC = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-1">Stock Quantity</label>
                             <input 
                                 type="number" 
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-900 bg-white"
                                 value={newProduct.stock}
                                 onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})}
                             />

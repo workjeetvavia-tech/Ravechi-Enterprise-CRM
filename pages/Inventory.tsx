@@ -93,6 +93,9 @@ const Inventory: React.FC = () => {
       return matchesSearch && matchesCategory && matchesStock;
   });
 
+  // Calculate Total Stock Value
+  const totalStockValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -111,7 +114,7 @@ const Inventory: React.FC = () => {
        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
             <h3 className="text-indigo-800 font-semibold">Total Stock Value</h3>
-            <p className="text-2xl font-bold text-indigo-900 mt-2">₹ 24,50,000</p>
+            <p className="text-2xl font-bold text-indigo-900 mt-2">₹ {totalStockValue.toLocaleString('en-IN')}</p>
         </div>
         <div className="bg-amber-50 p-6 rounded-xl border border-amber-100">
             <h3 className="text-amber-800 font-semibold">Low Stock Items</h3>

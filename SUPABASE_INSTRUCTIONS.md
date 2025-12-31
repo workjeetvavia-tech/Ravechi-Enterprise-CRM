@@ -2,9 +2,31 @@
 
 For the application to work correctly, you need to ensure your database schema matches the application types.
 
-## 1. Initial Setup (If creating from scratch)
+## Fix: "Relation already exists" or "Column does not exist"
 
-Go to the **SQL Editor** in your Supabase dashboard and run the following script:
+If you see errors saying "leads already exists" or "column leads.visibility does not exist", run the following **Migration Script** in your Supabase SQL Editor. This script specifically adds the missing columns to your existing tables.
+
+```sql
+-- 1. Add 'visibility' and 'ownerId' to the 'leads' table if they don't exist
+ALTER TABLE public.leads 
+ADD COLUMN IF NOT EXISTS visibility text DEFAULT 'public',
+ADD COLUMN IF NOT EXISTS "ownerId" text;
+
+-- 2. Add 'visibility' and 'ownerId' to the 'products' table if they don't exist
+ALTER TABLE public.products 
+ADD COLUMN IF NOT EXISTS visibility text DEFAULT 'public',
+ADD COLUMN IF NOT EXISTS "ownerId" text;
+
+-- 3. Add 'state' to 'leads' if it is missing (needed for filters)
+ALTER TABLE public.leads
+ADD COLUMN IF NOT EXISTS state text;
+```
+
+---
+
+## Full Setup (Only for new, empty projects)
+
+**DO NOT RUN THIS IF YOU ALREADY HAVE TABLES.**
 
 ```sql
 -- Create Leads Table
@@ -50,21 +72,3 @@ create policy "Enable all access for all users" on public.products for all using
 alter publication supabase_realtime add table public.leads;
 alter publication supabase_realtime add table public.products;
 ```
-
-## 2. Update Existing Schema (Run this if you have existing tables)
-
-If you have already created the tables without `visibility` and `ownerId`, run this SQL to add them:
-
-```sql
--- Add columns to leads table
-ALTER TABLE public.leads 
-ADD COLUMN IF NOT EXISTS visibility text DEFAULT 'public',
-ADD COLUMN IF NOT EXISTS "ownerId" text;
-
--- Add columns to products table
-ALTER TABLE public.products 
-ADD COLUMN IF NOT EXISTS visibility text DEFAULT 'public',
-ADD COLUMN IF NOT EXISTS "ownerId" text;
-```
-
-**Note:** We use `"ownerId"` (quoted) to strictly match the camelCase used in the application code.

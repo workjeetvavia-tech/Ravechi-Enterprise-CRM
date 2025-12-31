@@ -57,48 +57,71 @@ export const subscribeToData = (type: 'leads' | 'products', callback: ChangeCall
     };
 };
 
+// --- DATA MAPPERS ---
+const mapLead = (item: any): Lead => ({
+    id: item.id,
+    name: item.name,
+    company: item.company,
+    email: item.email || '',
+    phone: item.phone || '',
+    state: item.state || '',
+    status: item.status as LeadStatus,
+    value: Number(item.value) || 0,
+    notes: item.notes || '',
+    lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
+    interest: Array.isArray(item.interest) ? item.interest : [],
+    visibility: item.visibility || 'public',
+    ownerId: item.ownerId || item["ownerId"] || ''
+});
+
+const mapProduct = (item: any): Product => ({
+    id: item.id,
+    name: item.name,
+    sku: item.sku,
+    category: item.category as ProductCategory,
+    price: Number(item.price) || 0,
+    stock: Number(item.stock) || 0,
+    visibility: item.visibility || 'public',
+    ownerId: item.ownerId || item["ownerId"] || ''
+});
+
 // --- LEADS OPERATIONS ---
 
 export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
   if (supabase) {
-      let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
-      
-      // We use double quotes for "ownerId" because it is likely created as a case-sensitive column
-      // to match the TypeScript interface style, similar to "lastContact".
-      if (currentUserId) {
-         query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
-      } else {
-         query = query.eq('visibility', 'public');
-      }
+      try {
+        let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
+        
+        // Try to filter by visibility
+        if (currentUserId) {
+           query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
+        } else {
+           query = query.eq('visibility', 'public');
+        }
 
-      const { data, error } = await query;
-      
-      if (error) {
-          // Log the full error object for debugging
-          console.error("Supabase error fetching leads:", JSON.stringify(error, null, 2));
-          // If the error is about missing columns, we might want to fail gracefully or warn the user
-          if (error.code === '42703') { // Undefined column
-              console.warn("It looks like 'visibility' or 'ownerId' columns are missing in your Supabase table. Please run the SQL migration script provided in SUPABASE_INSTRUCTIONS.md");
-          }
-          return [];
+        const { data, error } = await query;
+        
+        if (error) {
+            // Handle undefined column error gracefully
+            if (error.code === '42703') { 
+                console.warn("Supabase schema mismatch: 'visibility' or 'ownerId' column missing. Fetching all leads as fallback.");
+                // Fallback: Fetch without filters
+                const { data: fallbackData, error: fallbackError } = await supabase
+                    .from('leads')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (fallbackError) throw fallbackError;
+                return (fallbackData || []).map(mapLead);
+            }
+            throw error;
+        }
+        
+        return (data || []).map(mapLead);
+      } catch (err: any) {
+        console.error("Error fetching leads:", err.message);
+        return [];
       }
-      
-      // Robust mapping to ensure type safety
-      return (data || []).map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          company: item.company,
-          email: item.email || '',
-          phone: item.phone || '',
-          state: item.state || '',
-          status: item.status as LeadStatus,
-          value: Number(item.value) || 0,
-          notes: item.notes || '',
-          lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
-          interest: Array.isArray(item.interest) ? item.interest : [],
-          visibility: item.visibility || 'public',
-          ownerId: item.ownerId || item["ownerId"] || ''
-      })) as Lead[];
   }
   
   // Local Storage Fallback
@@ -112,39 +135,35 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
 
 export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
   if (supabase) {
-      // Ensure complex types like interest array are passed correctly
-      const payload = {
+      // Create payload, only including fields if we think they exist (basic assumption here is we try to send them)
+      // If the insert fails due to missing column, we can try omitting them.
+      const payload: any = {
           ...lead,
-          interest: lead.interest || [],
-          visibility: lead.visibility || 'public',
-          // Explicitly map ownerId to "ownerId" if needed by strict casing, 
-          // but usually JS object keys are passed as is.
-          "ownerId": lead.ownerId
+          interest: lead.interest || []
       };
       
-      const { data, error } = await supabase.from('leads').insert([payload]).select().single();
-      if (error) {
-          console.error("Supabase error adding lead:", JSON.stringify(error, null, 2));
-          throw error;
+      // We try to insert with visibility/ownerId. If it fails, we strip them.
+      try {
+        const { data, error } = await supabase.from('leads').insert([{
+             ...payload,
+             visibility: lead.visibility || 'public',
+             "ownerId": lead.ownerId
+        }]).select().single();
+        
+        if (error) {
+             if (error.code === '42703') {
+                 console.warn("Column missing during insert, retrying without visibility/ownerId");
+                 const { data: retryData, error: retryError } = await supabase.from('leads').insert([payload]).select().single();
+                 if (retryError) throw retryError;
+                 return mapLead(retryData);
+             }
+             throw error;
+        }
+        return mapLead(data);
+      } catch (err) {
+        console.error("Error adding lead:", err);
+        throw err;
       }
-      
-      // Map returned data to safe Lead object
-      const item = data;
-      return {
-          id: item.id,
-          name: item.name,
-          company: item.company,
-          email: item.email || '',
-          phone: item.phone || '',
-          state: item.state || '',
-          status: item.status as LeadStatus,
-          value: Number(item.value) || 0,
-          notes: item.notes || '',
-          lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
-          interest: Array.isArray(item.interest) ? item.interest : [],
-          visibility: item.visibility || 'public',
-          ownerId: item.ownerId || item["ownerId"] || ''
-      };
   }
   
   return new Promise((resolve) => {
@@ -159,14 +178,27 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
 export const updateLead = async (updatedLead: Lead): Promise<Lead> => {
   if (supabase) {
       const { id, ...updates } = updatedLead;
-      // Ensure we map ownerId correctly if needed
-      const payload = {
-          ...updates,
-          "ownerId": updatedLead.ownerId
-      };
+      const payload: any = { ...updates };
+      // Explicitly map ownerId
+      if (updatedLead.ownerId) payload["ownerId"] = updatedLead.ownerId;
 
-      const { error } = await supabase.from('leads').update(payload).eq('id', id);
-      if (error) throw error;
+      try {
+        const { error } = await supabase.from('leads').update(payload).eq('id', id);
+        if (error) {
+            if (error.code === '42703') {
+                // Retry without extra columns
+                delete payload.visibility;
+                delete payload["ownerId"];
+                const { error: retryError } = await supabase.from('leads').update(payload).eq('id', id);
+                if (retryError) throw retryError;
+                return updatedLead;
+            }
+            throw error;
+        }
+      } catch (err) {
+          console.error("Error updating lead", err);
+          throw err;
+      }
       return updatedLead;
   }
 
@@ -212,35 +244,36 @@ export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<
 
 export const getProducts = async (currentUserId?: string): Promise<Product[]> => {
   if (supabase) {
-      let query = supabase.from('products').select('*').order('created_at', { ascending: false });
+      try {
+        let query = supabase.from('products').select('*').order('created_at', { ascending: false });
 
-      if (currentUserId) {
-        // Quote "ownerId" for safety
-        query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
-      } else {
-        query = query.eq('visibility', 'public');
-      }
+        if (currentUserId) {
+            query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
+        } else {
+            query = query.eq('visibility', 'public');
+        }
 
-      const { data, error } = await query;
-      
-      if (error) {
-          console.error("Supabase error fetching products:", JSON.stringify(error, null, 2));
-           if (error.code === '42703') { 
-              console.warn("Missing 'visibility' or 'ownerId' columns in products table. Check SUPABASE_INSTRUCTIONS.md");
-          }
-          return [];
+        const { data, error } = await query;
+        
+        if (error) {
+            if (error.code === '42703') { 
+                console.warn("Supabase schema mismatch: 'visibility' column missing in products. Fetching all as fallback.");
+                const { data: fallbackData, error: fallbackError } = await supabase
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (fallbackError) throw fallbackError;
+                return (fallbackData || []).map(mapProduct);
+            }
+            throw error;
+        }
+        
+        return (data || []).map(mapProduct);
+      } catch (err: any) {
+        console.error("Error fetching products:", err.message);
+        return [];
       }
-      
-      return (data || []).map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          category: item.category as ProductCategory,
-          price: Number(item.price) || 0,
-          stock: Number(item.stock) || 0,
-          visibility: item.visibility || 'public',
-          ownerId: item.ownerId || item["ownerId"] || ''
-      })) as Product[];
   }
 
   return new Promise((resolve) => {
@@ -253,29 +286,28 @@ export const getProducts = async (currentUserId?: string): Promise<Product[]> =>
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
     if (supabase) {
-        const payload = {
-            ...product,
-            visibility: product.visibility || 'public',
-            "ownerId": product.ownerId
-        };
+        const payload: any = { ...product };
 
-        const { data, error } = await supabase.from('products').insert([payload]).select().single();
-        if (error) {
-             console.error("Supabase error adding product:", JSON.stringify(error, null, 2));
-             throw error;
+        try {
+            const { data, error } = await supabase.from('products').insert([{
+                ...payload,
+                visibility: product.visibility || 'public',
+                "ownerId": product.ownerId
+            }]).select().single();
+
+            if (error) {
+                 if (error.code === '42703') {
+                     const { data: retryData, error: retryError } = await supabase.from('products').insert([payload]).select().single();
+                     if (retryError) throw retryError;
+                     return mapProduct(retryData);
+                 }
+                 throw error;
+            }
+            return mapProduct(data);
+        } catch(err) {
+            console.error("Error adding product", err);
+            throw err;
         }
-        
-        const item = data;
-        return {
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          category: item.category as ProductCategory,
-          price: Number(item.price) || 0,
-          stock: Number(item.stock) || 0,
-          visibility: item.visibility || 'public',
-          ownerId: item.ownerId || item["ownerId"] || ''
-        };
     }
 
     return new Promise((resolve) => {

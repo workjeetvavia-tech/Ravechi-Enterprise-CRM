@@ -59,16 +59,27 @@ export const subscribeToData = (type: 'leads' | 'products', callback: ChangeCall
 
 // --- LEADS OPERATIONS ---
 
-export const getLeads = async (): Promise<Lead[]> => {
+export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
   if (supabase) {
-      // Order by created_at for chronological sorting
-      const { data, error } = await supabase
-          .from('leads')
-          .select('*')
-          .order('created_at', { ascending: false });
+      let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
+      
+      // We use double quotes for "ownerId" because it is likely created as a case-sensitive column
+      // to match the TypeScript interface style, similar to "lastContact".
+      if (currentUserId) {
+         query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
+      } else {
+         query = query.eq('visibility', 'public');
+      }
+
+      const { data, error } = await query;
       
       if (error) {
-          console.error("Supabase error fetching leads:", error);
+          // Log the full error object for debugging
+          console.error("Supabase error fetching leads:", JSON.stringify(error, null, 2));
+          // If the error is about missing columns, we might want to fail gracefully or warn the user
+          if (error.code === '42703') { // Undefined column
+              console.warn("It looks like 'visibility' or 'ownerId' columns are missing in your Supabase table. Please run the SQL migration script provided in SUPABASE_INSTRUCTIONS.md");
+          }
           return [];
       }
       
@@ -83,11 +94,20 @@ export const getLeads = async (): Promise<Lead[]> => {
           status: item.status as LeadStatus,
           value: Number(item.value) || 0,
           notes: item.notes || '',
-          lastContact: item.lastContact || new Date().toISOString().split('T')[0],
-          interest: Array.isArray(item.interest) ? item.interest : []
+          lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
+          interest: Array.isArray(item.interest) ? item.interest : [],
+          visibility: item.visibility || 'public',
+          ownerId: item.ownerId || item["ownerId"] || ''
       })) as Lead[];
   }
-  return new Promise((resolve) => setTimeout(() => resolve([...leadsCache]), 300));
+  
+  // Local Storage Fallback
+  return new Promise((resolve) => {
+      const filtered = leadsCache.filter(l => 
+          l.visibility === 'public' || (currentUserId && l.ownerId === currentUserId)
+      );
+      setTimeout(() => resolve([...filtered]), 300);
+  });
 };
 
 export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
@@ -95,11 +115,18 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
       // Ensure complex types like interest array are passed correctly
       const payload = {
           ...lead,
-          interest: lead.interest || []
+          interest: lead.interest || [],
+          visibility: lead.visibility || 'public',
+          // Explicitly map ownerId to "ownerId" if needed by strict casing, 
+          // but usually JS object keys are passed as is.
+          "ownerId": lead.ownerId
       };
       
       const { data, error } = await supabase.from('leads').insert([payload]).select().single();
-      if (error) throw error;
+      if (error) {
+          console.error("Supabase error adding lead:", JSON.stringify(error, null, 2));
+          throw error;
+      }
       
       // Map returned data to safe Lead object
       const item = data;
@@ -113,13 +140,15 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
           status: item.status as LeadStatus,
           value: Number(item.value) || 0,
           notes: item.notes || '',
-          lastContact: item.lastContact || new Date().toISOString().split('T')[0],
-          interest: Array.isArray(item.interest) ? item.interest : []
+          lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
+          interest: Array.isArray(item.interest) ? item.interest : [],
+          visibility: item.visibility || 'public',
+          ownerId: item.ownerId || item["ownerId"] || ''
       };
   }
   
   return new Promise((resolve) => {
-    const newLead = { ...lead, id: Math.random().toString(36).substr(2, 9) };
+    const newLead = { ...lead, id: Math.random().toString(36).substr(2, 9) } as Lead;
     leadsCache = [newLead, ...leadsCache];
     localStorage.setItem(LEADS_KEY, JSON.stringify(leadsCache));
     notify('leads');
@@ -130,7 +159,13 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
 export const updateLead = async (updatedLead: Lead): Promise<Lead> => {
   if (supabase) {
       const { id, ...updates } = updatedLead;
-      const { error } = await supabase.from('leads').update(updates).eq('id', id);
+      // Ensure we map ownerId correctly if needed
+      const payload = {
+          ...updates,
+          "ownerId": updatedLead.ownerId
+      };
+
+      const { error } = await supabase.from('leads').update(payload).eq('id', id);
       if (error) throw error;
       return updatedLead;
   }
@@ -175,15 +210,24 @@ export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<
 
 // --- PRODUCTS OPERATIONS ---
 
-export const getProducts = async (): Promise<Product[]> => {
+export const getProducts = async (currentUserId?: string): Promise<Product[]> => {
   if (supabase) {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('products').select('*').order('created_at', { ascending: false });
+
+      if (currentUserId) {
+        // Quote "ownerId" for safety
+        query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
+      } else {
+        query = query.eq('visibility', 'public');
+      }
+
+      const { data, error } = await query;
       
       if (error) {
-          console.error("Supabase error fetching products:", error);
+          console.error("Supabase error fetching products:", JSON.stringify(error, null, 2));
+           if (error.code === '42703') { 
+              console.warn("Missing 'visibility' or 'ownerId' columns in products table. Check SUPABASE_INSTRUCTIONS.md");
+          }
           return [];
       }
       
@@ -193,16 +237,33 @@ export const getProducts = async (): Promise<Product[]> => {
           sku: item.sku,
           category: item.category as ProductCategory,
           price: Number(item.price) || 0,
-          stock: Number(item.stock) || 0
+          stock: Number(item.stock) || 0,
+          visibility: item.visibility || 'public',
+          ownerId: item.ownerId || item["ownerId"] || ''
       })) as Product[];
   }
-  return new Promise((resolve) => setTimeout(() => resolve([...productsCache]), 300));
+
+  return new Promise((resolve) => {
+      const filtered = productsCache.filter(p => 
+        p.visibility === 'public' || (currentUserId && p.ownerId === currentUserId)
+      );
+      setTimeout(() => resolve([...filtered]), 300);
+  });
 };
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
     if (supabase) {
-        const { data, error } = await supabase.from('products').insert([product]).select().single();
-        if (error) throw error;
+        const payload = {
+            ...product,
+            visibility: product.visibility || 'public',
+            "ownerId": product.ownerId
+        };
+
+        const { data, error } = await supabase.from('products').insert([payload]).select().single();
+        if (error) {
+             console.error("Supabase error adding product:", JSON.stringify(error, null, 2));
+             throw error;
+        }
         
         const item = data;
         return {
@@ -211,12 +272,14 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
           sku: item.sku,
           category: item.category as ProductCategory,
           price: Number(item.price) || 0,
-          stock: Number(item.stock) || 0
+          stock: Number(item.stock) || 0,
+          visibility: item.visibility || 'public',
+          ownerId: item.ownerId || item["ownerId"] || ''
         };
     }
 
     return new Promise((resolve) => {
-      const newProduct = { ...product, id: Math.random().toString(36).substr(2, 9) };
+      const newProduct = { ...product, id: Math.random().toString(36).substr(2, 9) } as Product;
       productsCache = [newProduct, ...productsCache];
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
       notify('products');

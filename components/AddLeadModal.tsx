@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Globe, Lock } from 'lucide-react';
 import { Lead, LeadStatus } from '../types';
 import { addLead, updateLead } from '../services/dataService';
+import { User } from '../services/authService';
 
 interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLeadSaved: () => void;
   leadToEdit?: Lead | null;
+  user?: User | null;
 }
 
-const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSaved, leadToEdit }) => {
+const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSaved, leadToEdit, user }) => {
   const [newLead, setNewLead] = useState<Partial<Lead>>({
     name: '',
     company: '',
@@ -20,7 +22,8 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
     status: LeadStatus.NEW,
     value: 0,
     notes: '',
-    interest: []
+    interest: [],
+    visibility: 'public'
   });
   const [interestInput, setInterestInput] = useState('');
 
@@ -40,7 +43,8 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
         status: LeadStatus.NEW,
         value: 0,
         notes: '',
-        interest: []
+        interest: [],
+        visibility: 'public'
       });
       setInterestInput('');
     }
@@ -72,7 +76,9 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
             value: Number(newLead.value) || 0,
             notes: newLead.notes || '',
             lastContact: new Date().toISOString().split('T')[0],
-            interest: interestArray
+            interest: interestArray,
+            visibility: newLead.visibility || 'public',
+            ownerId: user?.id || ''
         };
         await addLead(leadToAdd);
     }
@@ -179,6 +185,47 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                         onChange={e => setInterestInput(e.target.value)}
                         />
                 </div>
+                
+                {/* Visibility Selection */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Visibility</label>
+                    <div className="flex gap-4">
+                        <label className={`
+                            flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
+                            ${newLead.visibility === 'public' 
+                                ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
+                        `}>
+                            <input 
+                                type="radio" 
+                                name="visibility" 
+                                className="hidden" 
+                                checked={newLead.visibility === 'public'}
+                                onChange={() => setNewLead({...newLead, visibility: 'public'})}
+                            />
+                            <Globe size={18} />
+                            <span className="font-medium text-sm">Public (All Users)</span>
+                        </label>
+
+                        <label className={`
+                            flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
+                            ${newLead.visibility === 'private' 
+                                ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
+                        `}>
+                            <input 
+                                type="radio" 
+                                name="visibility" 
+                                className="hidden" 
+                                checked={newLead.visibility === 'private'}
+                                onChange={() => setNewLead({...newLead, visibility: 'private'})}
+                            />
+                            <Lock size={18} />
+                            <span className="font-medium text-sm">Private (Only Me)</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                         <textarea 

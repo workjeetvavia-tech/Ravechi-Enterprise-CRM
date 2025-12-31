@@ -78,19 +78,19 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard user={currentUser} />;
       case 'leads':
-        return <Leads />;
+        return <Leads user={currentUser} />;
       case 'inventory':
-        return <Inventory />;
+        return <Inventory user={currentUser} />;
       case 'deals':
-        return <DealsPipeline />;
+        return <DealsPipeline user={currentUser} />;
       case 'settings':
         return <Settings user={currentUser} onLogout={handleLogout} />;
       case 'ai-tools':
         return <AiAssistant />;
       default:
-        return <Dashboard />;
+        return <Dashboard user={currentUser} />;
     }
   };
 

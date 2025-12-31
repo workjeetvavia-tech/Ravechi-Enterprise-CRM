@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { getProducts, addProduct, deleteProduct, subscribeToData } from '../services/dataService';
 import { Product, ProductCategory } from '../types';
-import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, Filter, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, CheckCircle, XCircle, ChevronDown, Globe, Lock } from 'lucide-react';
+import { User } from '../services/authService';
 
-const Inventory: React.FC = () => {
+interface InventoryProps {
+    user?: User | null;
+}
+
+const Inventory: React.FC<InventoryProps> = ({ user }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -19,7 +24,8 @@ const Inventory: React.FC = () => {
       sku: '',
       price: 0,
       stock: 0,
-      category: ProductCategory.STATIONERY
+      category: ProductCategory.STATIONERY,
+      visibility: 'public'
   });
 
   useEffect(() => {
@@ -31,11 +37,11 @@ const Inventory: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]); // Reload if user changes
 
   const loadProducts = async () => {
     try {
-        const data = await getProducts();
+        const data = await getProducts(user?.id);
         setProducts(data);
     } finally {
         setLoading(false);
@@ -45,7 +51,6 @@ const Inventory: React.FC = () => {
   const handleDelete = async (id: string) => {
       if(window.confirm("Are you sure you want to delete this product?")) {
           await deleteProduct(id);
-          // Auto-refresh handled by subscription
       }
   };
 
@@ -58,13 +63,21 @@ const Inventory: React.FC = () => {
           sku: newProduct.sku!,
           price: Number(newProduct.price) || 0,
           stock: Number(newProduct.stock) || 0,
-          category: newProduct.category || ProductCategory.STATIONERY
+          category: newProduct.category || ProductCategory.STATIONERY,
+          visibility: newProduct.visibility || 'public',
+          ownerId: user?.id || ''
       };
 
       await addProduct(productToAdd);
       setIsAddModalOpen(false);
-      setNewProduct({ category: ProductCategory.STATIONERY, price: 0, stock: 0, name: '', sku: '' });
-      // Auto-refresh handled by subscription
+      setNewProduct({ 
+          category: ProductCategory.STATIONERY, 
+          price: 0, 
+          stock: 0, 
+          name: '', 
+          sku: '', 
+          visibility: 'public' 
+        });
   };
 
   const getCategoryIcon = (cat: ProductCategory) => {
@@ -186,27 +199,28 @@ const Inventory: React.FC = () => {
                 <th className="p-4 font-semibold text-slate-600">Price (INR)</th>
                 <th className="p-4 font-semibold text-slate-600">Stock</th>
                 <th className="p-4 font-semibold text-slate-600">Status</th>
+                <th className="p-4 font-semibold text-slate-600">Vis.</th>
                 <th className="p-4 font-semibold text-slate-600 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                 <tr><td colSpan={7} className="p-8 text-center">Loading Inventory...</td></tr>
+                 <tr><td colSpan={8} className="p-8 text-center">Loading Inventory...</td></tr>
               ) : filteredProducts.length === 0 ? (
-                  <tr><td colSpan={7} className="p-12 text-center text-slate-500">No products found matching your filters.</td></tr>
+                  <tr><td colSpan={8} className="p-12 text-center text-slate-500">No products found matching your filters.</td></tr>
               ) : filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-medium text-slate-800">{product.name}</td>
-                  <td className="p-4 text-slate-500 font-mono text-sm">{product.sku}</td>
-                  <td className="p-4">
+                  <td className="p-4 font-medium text-slate-800 bg-white">{product.name}</td>
+                  <td className="p-4 text-slate-500 font-mono text-sm bg-white">{product.sku}</td>
+                  <td className="p-4 bg-white">
                     <div className="flex items-center gap-2">
                         {getCategoryIcon(product.category)}
                         <span className="text-sm text-slate-600">{product.category}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-slate-800 font-medium">₹ {product.price.toLocaleString()}</td>
-                  <td className="p-4 text-slate-600">{product.stock}</td>
-                  <td className="p-4">
+                  <td className="p-4 text-slate-800 font-medium bg-white">₹ {product.price.toLocaleString()}</td>
+                  <td className="p-4 text-slate-600 bg-white">{product.stock}</td>
+                  <td className="p-4 bg-white">
                     {product.stock === 0 ? (
                          <span className="flex items-center gap-1 text-rose-600 bg-rose-50 px-2 py-1 rounded text-xs font-medium w-fit border border-rose-100">
                             <XCircle size={12}/> Out of Stock
@@ -221,7 +235,14 @@ const Inventory: React.FC = () => {
                         </span>
                     )}
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-4 bg-white">
+                      {product.visibility === 'private' ? (
+                          <Lock size={16} className="text-slate-400" title="Private (Only you)" />
+                      ) : (
+                          <Globe size={16} className="text-slate-400" title="Public (Everyone)" />
+                      )}
+                  </td>
+                  <td className="p-4 text-right bg-white">
                       <button 
                         onClick={() => handleDelete(product.id)}
                         className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
@@ -298,6 +319,46 @@ const Inventory: React.FC = () => {
                                 value={newProduct.stock}
                                 onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})}
                             />
+                        </div>
+                    </div>
+
+                    {/* Visibility Selection */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Visibility</label>
+                        <div className="flex gap-4">
+                            <label className={`
+                                flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
+                                ${newProduct.visibility === 'public' 
+                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
+                            `}>
+                                <input 
+                                    type="radio" 
+                                    name="visibility" 
+                                    className="hidden" 
+                                    checked={newProduct.visibility === 'public'}
+                                    onChange={() => setNewProduct({...newProduct, visibility: 'public'})}
+                                />
+                                <Globe size={18} />
+                                <span className="font-medium text-sm">Public</span>
+                            </label>
+
+                            <label className={`
+                                flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
+                                ${newProduct.visibility === 'private' 
+                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
+                            `}>
+                                <input 
+                                    type="radio" 
+                                    name="visibility" 
+                                    className="hidden" 
+                                    checked={newProduct.visibility === 'private'}
+                                    onChange={() => setNewProduct({...newProduct, visibility: 'private'})}
+                                />
+                                <Lock size={18} />
+                                <span className="font-medium text-sm">Private</span>
+                            </label>
                         </div>
                     </div>
                   

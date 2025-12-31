@@ -3,8 +3,13 @@ import { getLeads, updateLeadStatus, subscribeToData } from '../services/dataSer
 import { Lead, LeadStatus } from '../types';
 import { MoreHorizontal, Plus, Pencil } from 'lucide-react';
 import AddLeadModal from '../components/AddLeadModal';
+import { User } from '../services/authService';
 
-const DealsPipeline: React.FC = () => {
+interface DealsPipelineProps {
+    user?: User | null;
+}
+
+const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,11 +23,11 @@ const DealsPipeline: React.FC = () => {
     });
     
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const loadLeads = async () => {
     try {
-      const data = await getLeads();
+      const data = await getLeads(user?.id);
       setLeads(data);
     } finally {
       setLoading(false);
@@ -148,6 +153,7 @@ const DealsPipeline: React.FC = () => {
         onClose={() => setIsModalOpen(false)} 
         onLeadSaved={() => {/* Handled by subscription */}}
         leadToEdit={editingLead}
+        user={user}
       />
     </div>
   );

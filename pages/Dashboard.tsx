@@ -3,11 +3,16 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { IndianRupee, TrendingUp, Users, FileText, Package } from 'lucide-react';
 import { getLeads, getProducts, subscribeToData } from '../services/dataService';
 import { Lead, Product, LeadStatus, ProductCategory } from '../types';
+import { User } from '../services/authService';
 
 // Indigo, Teal, Amber, Rose, Purple, Pink
 const COLORS = ['#4f46e5', '#14b8a6', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899'];
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+    user?: User | null;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +20,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [leadsData, productsData] = await Promise.all([getLeads(), getProducts()]);
+        const [leadsData, productsData] = await Promise.all([getLeads(user?.id), getProducts(user?.id)]);
         setLeads(leadsData);
         setProducts(productsData);
       } catch (error) {
@@ -34,7 +39,7 @@ const Dashboard: React.FC = () => {
       unsubscribeLeads();
       unsubscribeProducts();
     };
-  }, []);
+  }, [user]);
 
   // --- Calculations ---
 

@@ -26,6 +26,8 @@ export interface Lead {
   notes: string;
   lastContact: string;
   interest: string[]; // e.g., ["Laptops", "A4 Paper"]
+  visibility: 'public' | 'private';
+  ownerId: string;
 }
 
 export interface Product {
@@ -35,6 +37,8 @@ export interface Product {
   price: number;
   stock: number;
   sku: string;
+  visibility: 'public' | 'private';
+  ownerId: string;
 }
 
 export interface DashboardStats {

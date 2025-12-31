@@ -2,10 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { getLeads, deleteLead, subscribeToData } from '../services/dataService';
 import { generateColdEmail, analyzeLeadPotential } from '../services/geminiService';
 import { Lead, LeadStatus } from '../types';
-import { Search, Filter, Wand2, Mail, Trash2, X, Plus, Pencil, IndianRupee, MapPin, ChevronDown } from 'lucide-react';
+import { Search, Filter, Wand2, Mail, Trash2, X, Plus, Pencil, IndianRupee, MapPin, ChevronDown, Lock, Globe } from 'lucide-react';
 import AddLeadModal from '../components/AddLeadModal';
+import { User } from '../services/authService';
 
-const Leads: React.FC = () => {
+interface LeadsProps {
+    user?: User | null;
+}
+
+const Leads: React.FC<LeadsProps> = ({ user }) => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -35,11 +40,11 @@ const Leads: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const loadLeads = async () => {
     try {
-      const data = await getLeads();
+      const data = await getLeads(user?.id);
       setLeads(data);
     } catch (err) {
       console.error(err);
@@ -232,6 +237,7 @@ const Leads: React.FC = () => {
                   <th className="p-4 font-semibold text-slate-600 text-sm tracking-wide">State</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm tracking-wide">Value (INR)</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm tracking-wide">Interests</th>
+                  <th className="p-4 font-semibold text-slate-600 text-sm tracking-wide">Vis.</th>
                   <th className="p-4 font-semibold text-slate-600 text-sm tracking-wide text-right">Actions</th>
                 </tr>
               </thead>
@@ -261,6 +267,13 @@ const Leads: React.FC = () => {
                           </span>
                         ))}
                       </div>
+                    </td>
+                    <td className="p-4">
+                        {lead.visibility === 'private' ? (
+                            <Lock size={16} className="text-slate-400" title="Private (Only you)" />
+                        ) : (
+                            <Globe size={16} className="text-slate-400" title="Public (Everyone)" />
+                        )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -306,7 +319,8 @@ const Leads: React.FC = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onLeadSaved={() => {/* Handled by subscription */}}
-        leadToEdit={editingLead} 
+        leadToEdit={editingLead}
+        user={user}
       />
 
       {/* AI Modal */}

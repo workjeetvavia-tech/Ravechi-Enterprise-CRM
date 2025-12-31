@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Lock, Briefcase, ArrowRight, Mail } from 'lucide-react';
+import { User as UserIcon, Lock, Briefcase, ArrowRight, Mail, AlertCircle } from 'lucide-react';
 import { loginUser, User } from '../services/authService';
 
 interface LoginProps {
@@ -11,15 +11,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     try {
       const user = await loginUser(email, password);
       onLogin(user);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Invalid login credentials. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -53,6 +56,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
         <div className="md:w-1/2 p-8 md:p-12 bg-white">
           <h2 className="text-2xl font-bold text-slate-800 mb-6">Welcome Back</h2>
           
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>

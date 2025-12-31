@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Lock, Mail, ArrowRight, Briefcase } from 'lucide-react';
+import { User as UserIcon, Lock, Mail, ArrowRight, Briefcase, AlertCircle, CheckCircle } from 'lucide-react';
 import { signupUser, User } from '../services/authService';
 
 interface SignupProps {
@@ -13,15 +13,27 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onNavigateToLogin }) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'employee'>('employee');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+    
     try {
       const user = await signupUser(name, email, password, role);
+      // If we get here without error, the user is logged in (session active)
       onSignup(user);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message && err.message.includes("check your email")) {
+        // Handle email verification case as a success in terms of UX
+        setSuccessMessage(err.message);
+      } else {
+        setError(err.message || "Signup failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -55,6 +67,20 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onNavigateToLogin }) => {
         <div className="md:w-1/2 p-8 md:p-12 bg-white">
           <h2 className="text-2xl font-bold text-slate-800 mb-6">Create Account</h2>
           
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-start gap-2">
+                <CheckCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <span>{successMessage}</span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>

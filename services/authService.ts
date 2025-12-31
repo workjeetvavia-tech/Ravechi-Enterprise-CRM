@@ -27,8 +27,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
 export const loginUser = async (email: string, password: string): Promise<User> => {
     const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email: email.trim(),
+        password: password.trim()
     });
 
     if (error) {
@@ -41,8 +41,8 @@ export const loginUser = async (email: string, password: string): Promise<User> 
 
 export const signupUser = async (name: string, email: string, password: string, role: 'admin' | 'employee'): Promise<User> => {
     const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
         options: {
             data: {
                 name,
@@ -55,8 +55,12 @@ export const signupUser = async (name: string, email: string, password: string, 
         throw new Error(error.message);
     }
 
-    // Note: If email confirmation is enabled in Supabase, data.user might be null or session null
-    if (!data.user) throw new Error("Signup successful, but user data is missing. Please check your email for confirmation.");
+    // Check if session is missing. If so, email confirmation is enabled in Supabase.
+    if (data.user && !data.session) {
+        throw new Error("Account created successfully! Please check your email to verify your account before logging in.");
+    }
+
+    if (!data.user) throw new Error("Signup successful, but user data is missing.");
     
     return mapSupabaseUser(data.user)!;
 };

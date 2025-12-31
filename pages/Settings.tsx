@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../services/authService';
 import { User as UserIcon, Bell, Shield, LogOut, Globe } from 'lucide-react';
 
@@ -8,6 +8,44 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ user, onLogout }) => {
+  // Notification State with LocalStorage Persistence
+  const [notifications, setNotifications] = useState(() => {
+    try {
+        const saved = localStorage.getItem('ravechi_notifications');
+        return saved ? JSON.parse(saved) : {
+          emailAlerts: true,
+          lowStockWarnings: true,
+          weeklyReport: false
+        };
+    } catch (e) {
+        return {
+          emailAlerts: true,
+          lowStockWarnings: true,
+          weeklyReport: false
+        };
+    }
+  });
+
+  // Regional State
+  const [currency, setCurrency] = useState(() => localStorage.getItem('ravechi_currency') || 'Indian Rupee (₹)');
+  const [timezone, setTimezone] = useState(() => localStorage.getItem('ravechi_timezone') || '(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi');
+
+  useEffect(() => {
+    localStorage.setItem('ravechi_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('ravechi_currency', currency);
+  }, [currency]);
+  
+  useEffect(() => {
+    localStorage.setItem('ravechi_timezone', timezone);
+  }, [timezone]);
+
+  const toggleNotification = (key: keyof typeof notifications) => {
+    setNotifications((prev: any) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
@@ -24,8 +62,8 @@ const Settings: React.FC<SettingsProps> = ({ user, onLogout }) => {
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-center gap-4">
-                <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-xl font-bold text-slate-500">
-                    {user?.avatar || 'U'}
+                <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-xl font-bold text-slate-500 uppercase">
+                    {user?.avatar || user?.name?.substring(0,2) || 'U'}
                 </div>
                 <div>
                     <p className="font-medium text-slate-900">{user?.name}</p>
@@ -53,22 +91,27 @@ const Settings: React.FC<SettingsProps> = ({ user, onLogout }) => {
                 <Bell size={18} className="text-amber-500" /> Notifications
             </h3>
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                {/* Email Alerts Toggle */}
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleNotification('emailAlerts')}>
                     <span className="text-slate-700 text-sm">Email Alerts for New Leads</span>
-                    <div className="w-10 h-5 bg-indigo-600 rounded-full relative cursor-pointer shadow-inner">
-                        <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm"></div>
+                    <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${notifications.emailAlerts ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all duration-200 ${notifications.emailAlerts ? 'right-1' : 'left-1'}`}></div>
                     </div>
                 </div>
-                <div className="flex items-center justify-between">
+                
+                {/* Low Stock Toggle */}
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleNotification('lowStockWarnings')}>
                     <span className="text-slate-700 text-sm">Low Stock Warnings</span>
-                    <div className="w-10 h-5 bg-indigo-600 rounded-full relative cursor-pointer shadow-inner">
-                        <div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm"></div>
+                    <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${notifications.lowStockWarnings ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all duration-200 ${notifications.lowStockWarnings ? 'right-1' : 'left-1'}`}></div>
                     </div>
                 </div>
-                <div className="flex items-center justify-between">
+
+                {/* Weekly Report Toggle */}
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleNotification('weeklyReport')}>
                     <span className="text-slate-700 text-sm">Weekly Report Summary</span>
-                    <div className="w-10 h-5 bg-slate-200 rounded-full relative cursor-pointer shadow-inner">
-                        <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm"></div>
+                    <div className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${notifications.weeklyReport ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all duration-200 ${notifications.weeklyReport ? 'right-1' : 'left-1'}`}></div>
                     </div>
                 </div>
             </div>
@@ -81,15 +124,24 @@ const Settings: React.FC<SettingsProps> = ({ user, onLogout }) => {
              <div className="space-y-4">
                  <div>
                     <label className="text-sm text-slate-500 block mb-1">Currency</label>
-                    <select className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
-                        <option>Indian Rupee (₹)</option>
-                        <option>US Dollar ($)</option>
+                    <select 
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                        className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    >
+                        <option value="Indian Rupee (₹)">Indian Rupee (₹)</option>
+                        <option value="US Dollar ($)">US Dollar ($)</option>
                     </select>
                  </div>
                  <div>
                     <label className="text-sm text-slate-500 block mb-1">Timezone</label>
-                    <select className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
-                        <option>(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi</option>
+                    <select 
+                        value={timezone}
+                        onChange={(e) => setTimezone(e.target.value)}
+                        className="w-full border border-slate-300 rounded p-2 text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    >
+                        <option value="(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi">(GMT+05:30) Chennai, Kolkata, Mumbai, New Delhi</option>
+                        <option value="UTC">UTC</option>
                     </select>
                  </div>
             </div>

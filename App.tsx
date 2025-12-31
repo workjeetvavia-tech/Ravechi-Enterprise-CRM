@@ -9,6 +9,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AiAssistant from './pages/AiAssistant';
+import LiveAssistant from './pages/LiveAssistant';
 import { User, getCurrentUser, clearUserSession } from './services/authService';
 import { supabase } from './services/supabaseClient';
 
@@ -89,6 +90,8 @@ const App: React.FC = () => {
         return <Settings user={currentUser} onLogout={handleLogout} />;
       case 'ai-tools':
         return <AiAssistant />;
+      case 'live-agent':
+        return <LiveAssistant />;
       default:
         return <Dashboard user={currentUser} />;
     }

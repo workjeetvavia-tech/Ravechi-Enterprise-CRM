@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Package, Bot, Briefcase, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Package, Bot, Briefcase, Settings, Mic } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
     { id: 'leads', label: 'Leads & CRM', icon: Users },
     { id: 'inventory', label: 'Inventory (IT+Stat)', icon: Package },
     { id: 'ai-tools', label: 'AI Assistant', icon: Bot },
+    { id: 'live-agent', label: 'Voice Agent', icon: Mic },
     { id: 'deals', label: 'Deals Pipeline', icon: Briefcase },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

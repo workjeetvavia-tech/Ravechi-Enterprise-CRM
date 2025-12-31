@@ -1,5 +1,7 @@
 {
   "name": "Ravechi Enterprises",
   "description": "CRM Software",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

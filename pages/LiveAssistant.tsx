@@ -73,19 +73,11 @@ const LiveAssistant: React.FC = () => {
     };
   }, []);
 
-  const getApiKey = () => {
-    try {
-      return process.env.API_KEY || '';
-    } catch (e) {
-      return '';
-    }
-  };
-
   const startSession = async () => {
     setError(null);
-    const apiKey = getApiKey();
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      setError("API Key is missing. Please configure your environment variables.");
+      setError("API Key is missing. Please configure API_KEY in your environment variables.");
       return;
     }
 

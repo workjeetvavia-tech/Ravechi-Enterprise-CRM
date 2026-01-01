@@ -1,24 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { Lead } from "../types";
 
-// Safely retrieve API Key (handles browser environments where process might be undefined)
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || '';
-  } catch (e) {
-    return '';
-  }
-};
-
 // Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const MODEL_NAME = "gemini-3-flash-preview";
 
 export const generateColdEmail = async (lead: Lead): Promise<string> => {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    return "API Key is missing. Please configure your environment variables in Netlify/Vercel.";
+  if (!process.env.API_KEY) {
+    return "API Key is missing. Please add API_KEY to your environment variables.";
   }
 
   const prompt = `
@@ -50,8 +41,7 @@ export const generateColdEmail = async (lead: Lead): Promise<string> => {
 };
 
 export const analyzeLeadPotential = async (lead: Lead): Promise<string> => {
-  const apiKey = getApiKey();
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return "API Key is missing.";
   }
 
@@ -80,8 +70,7 @@ export const analyzeLeadPotential = async (lead: Lead): Promise<string> => {
 };
 
 export const suggestBundle = async (products: string[]): Promise<string> => {
-  const apiKey = getApiKey();
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return "API Key is missing.";
   }
 
@@ -104,8 +93,7 @@ export const suggestBundle = async (products: string[]): Promise<string> => {
 };
 
 export const chatWithGemini = async (message: string, history: { role: string, parts: { text: string }[] }[]): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) {
+    if (!process.env.API_KEY) {
         return "API Key is missing.";
     }
 

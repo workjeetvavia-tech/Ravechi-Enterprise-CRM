@@ -1,5 +1,19 @@
 import React from 'react';
-import { LayoutDashboard, Users, Package, Bot, Briefcase, Settings, Mic } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  CheckSquare, 
+  Rocket, 
+  FileText, 
+  Briefcase, 
+  FileDigit, 
+  Ticket, 
+  Palette, 
+  CreditCard, 
+  Clock, 
+  LayoutGrid, 
+  User,
+  Settings
+} from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
@@ -11,12 +25,19 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'leads', label: 'Leads & CRM', icon: Users },
-    { id: 'inventory', label: 'Inventory (IT+Stat)', icon: Package },
-    { id: 'ai-tools', label: 'AI Assistant', icon: Bot },
-    { id: 'live-agent', label: 'Voice Agent', icon: Mic },
-    { id: 'deals', label: 'Deals Pipeline', icon: Briefcase },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'leads', label: 'Leads', icon: CheckSquare },
+    { id: 'deals', label: 'Deal/ Opportunity', icon: Rocket },
+    { id: 'proposals', label: 'Proposal', icon: FileText },
+    { id: 'clients', label: 'Client', icon: Briefcase },
+    { id: 'proforma', label: 'Proforma Invoice', icon: FileDigit },
+    { id: 'invoices', label: 'Invoice', icon: FileDigit },
+    { id: 'tickets', label: 'Support Ticket', icon: Ticket },
+    { id: 'inventory', label: 'Product/ Services', icon: Palette },
+    { id: 'finance', label: 'Finance', icon: CreditCard }, // Arrow functionality simulated by page view
+    { id: 'timesheet', label: 'Timesheet', icon: Clock },
+    { id: 'reports', label: 'Report', icon: LayoutGrid },
+    { id: 'users', label: 'User', icon: User },
+    { id: 'settings', label: 'Settings', icon: Settings }, // Kept for app settings
   ];
 
   return (
@@ -34,16 +55,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
         fixed md:static inset-y-0 left-0 z-30
         w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        md:translate-x-0 flex flex-col shadow-2xl
+        md:translate-x-0 flex flex-col shadow-2xl overflow-y-auto
       `}>
-        <div className="p-6 border-b border-slate-800">
+        <div className="p-6 border-b border-slate-800 flex-shrink-0">
           <h1 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent break-words leading-tight">
             Ravechi Enterprises
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-medium tracking-wide">CRM SOFTWARE</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-3 space-y-1">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -52,19 +73,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
                 setIsMobileMenuOpen(false);
               }}
               className={`
-                w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
+                w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm
                 ${currentView === item.id 
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' 
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
               `}
             >
-              <item.icon size={20} className={currentView === item.id ? 'text-indigo-200' : ''} />
+              <item.icon size={18} className={currentView === item.id ? 'text-indigo-200' : ''} />
               <span className="font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 flex-shrink-0">
           <div className="flex items-center space-x-3 bg-slate-800/50 p-2 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-md">
               JD

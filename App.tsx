@@ -9,7 +9,14 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AiAssistant from './pages/AiAssistant';
-import LiveAssistant from './pages/LiveAssistant';
+import Clients from './pages/Clients';
+import Proposals from './pages/Proposals';
+import Invoices from './pages/Invoices';
+import SupportTickets from './pages/SupportTickets';
+import Finance from './pages/Finance';
+import Timesheet from './pages/Timesheet';
+import Reports from './pages/Reports';
+import UserManagement from './pages/UserManagement';
 import { User, getCurrentUser, clearUserSession } from './services/authService';
 import { supabase } from './services/supabaseClient';
 
@@ -88,10 +95,26 @@ const App: React.FC = () => {
         return <DealsPipeline user={currentUser} />;
       case 'settings':
         return <Settings user={currentUser} onLogout={handleLogout} />;
-      case 'ai-tools':
+      case 'ai-tools': // Kept for functionality although removed from sidebar direct link if needed
         return <AiAssistant />;
-      case 'live-agent':
-        return <LiveAssistant />;
+      case 'clients':
+        return <Clients />;
+      case 'proposals':
+        return <Proposals />;
+      case 'invoices':
+        return <Invoices type="Invoice" />;
+      case 'proforma':
+        return <Invoices type="Proforma" />;
+      case 'tickets':
+        return <SupportTickets />;
+      case 'finance':
+        return <Finance />;
+      case 'timesheet':
+        return <Timesheet />;
+      case 'reports':
+        return <Reports />;
+      case 'users':
+        return <UserManagement />;
       default:
         return <Dashboard user={currentUser} />;
     }

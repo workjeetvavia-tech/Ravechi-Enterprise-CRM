@@ -20,12 +20,12 @@ export interface Lead {
   company: string;
   email: string;
   phone: string;
-  state: string; // Added State field
+  state: string;
   status: LeadStatus;
   value: number; // In INR
   notes: string;
   lastContact: string;
-  interest: string[]; // e.g., ["Laptops", "A4 Paper"]
+  interest: string[];
   visibility: 'public' | 'private';
   ownerId: string;
 }
@@ -46,4 +46,63 @@ export interface DashboardStats {
   activeLeads: number;
   conversionRate: number;
   inventoryAlerts: number;
+}
+
+// --- New Entities ---
+
+export interface Client {
+  id: string;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  gstin?: string;
+  address: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface Proposal {
+  id: string;
+  title: string;
+  clientName: string;
+  value: number;
+  date: string;
+  status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected';
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  clientName: string;
+  date: string;
+  dueDate: string;
+  amount: number;
+  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+  type: 'Invoice' | 'Proforma';
+}
+
+export interface Ticket {
+  id: string;
+  subject: string;
+  clientName: string;
+  priority: 'Low' | 'Medium' | 'High';
+  status: 'Open' | 'In Progress' | 'Resolved';
+  date: string;
+}
+
+export interface FinanceRecord {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'Income' | 'Expense';
+  category: string;
+  date: string;
+}
+
+export interface TimesheetEntry {
+  id: string;
+  project: string;
+  task: string;
+  hours: number;
+  date: string;
 }

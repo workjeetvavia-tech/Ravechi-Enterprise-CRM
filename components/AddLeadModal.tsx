@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Globe, Lock, Users, CheckSquare, Square } from 'lucide-react';
+import { X, Globe, Lock, Users, CheckSquare, Square, ShieldAlert } from 'lucide-react';
 import { Lead, LeadStatus, AppUser } from '../types';
 import { addLead, updateLead, getAppUsers } from '../services/dataService';
 import { User } from '../services/authService';
@@ -28,6 +28,8 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
   });
   const [interestInput, setInterestInput] = useState('');
   const [availableUsers, setAvailableUsers] = useState<AppUser[]>([]);
+
+  const isAdmin = user?.role === 'admin';
 
   // Populate form when opening in edit mode
   useEffect(() => {
@@ -96,6 +98,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
   };
 
   const toggleSharedUser = (userId: string) => {
+      if (!isAdmin) return; // Prevent non-admins from toggling
       const currentShared = newLead.sharedWith || [];
       if (currentShared.includes(userId)) {
           setNewLead({ ...newLead, sharedWith: currentShared.filter(id => id !== userId) });
@@ -205,8 +208,15 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                 
                 {/* Visibility Selection */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Who can see this lead?</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-slate-700">Who can see this lead?</label>
+                        {!isAdmin && (
+                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
+                                <ShieldAlert size={10} /> Admin Control Only
+                            </span>
+                        )}
+                    </div>
+                    <div className={`grid grid-cols-3 gap-2 ${!isAdmin ? 'opacity-60 pointer-events-none' : ''}`}>
                         <label className={`
                             flex flex-col items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors text-center
                             ${newLead.visibility === 'public' 
@@ -219,6 +229,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                                 className="hidden" 
                                 checked={newLead.visibility === 'public'}
                                 onChange={() => setNewLead({...newLead, visibility: 'public'})}
+                                disabled={!isAdmin}
                             />
                             <Globe size={20} />
                             <span className="font-medium text-xs">Everyone</span>
@@ -236,6 +247,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                                 className="hidden" 
                                 checked={newLead.visibility === 'private'}
                                 onChange={() => setNewLead({...newLead, visibility: 'private'})}
+                                disabled={!isAdmin}
                             />
                             <Lock size={20} />
                             <span className="font-medium text-xs">Only Me</span>
@@ -253,6 +265,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
                                 className="hidden" 
                                 checked={newLead.visibility === 'shared'}
                                 onChange={() => setNewLead({...newLead, visibility: 'shared'})}
+                                disabled={!isAdmin}
                             />
                             <Users size={20} />
                             <span className="font-medium text-xs">Specific People</span>
@@ -261,7 +274,7 @@ const AddLeadModal: React.FC<AddLeadModalProps> = ({ isOpen, onClose, onLeadSave
 
                     {/* User Selection List (Only if 'shared' is selected) */}
                     {newLead.visibility === 'shared' && (
-                        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className={`mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 ${!isAdmin ? 'opacity-60 pointer-events-none' : ''}`}>
                             <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Select Users to Share With:</p>
                             <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
                                 {availableUsers.length === 0 ? (

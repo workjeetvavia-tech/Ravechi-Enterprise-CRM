@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getLeads, deleteLead, subscribeToData } from '../services/dataService';
 import { generateColdEmail, analyzeLeadPotential } from '../services/geminiService';
 import { Lead, LeadStatus } from '../types';
-import { Search, Filter, Wand2, Mail, Trash2, X, Plus, Pencil, IndianRupee, MapPin, ChevronDown, Lock, Globe } from 'lucide-react';
+import { Search, Filter, Wand2, Mail, Trash2, X, Plus, Pencil, IndianRupee, MapPin, ChevronDown, Lock, Globe, AlertTriangle } from 'lucide-react';
 import AddLeadModal from '../components/AddLeadModal';
 import { User } from '../services/authService';
 
@@ -30,6 +30,9 @@ const Leads: React.FC<LeadsProps> = ({ user }) => {
   // Add/Edit Lead Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  // Delete Confirmation State
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadLeads();
@@ -70,10 +73,22 @@ const Leads: React.FC<LeadsProps> = ({ user }) => {
     setAiLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this lead?')) {
-      await deleteLead(id);
-      // Auto-refresh handled by subscription
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    
+    // Store current state for rollback
+    const previousLeads = [...leads];
+    
+    // Optimistic Update: Remove immediately
+    setLeads(current => current.filter(l => l.id !== deleteId));
+    setDeleteId(null); // Close modal
+
+    try {
+      await deleteLead(deleteId);
+    } catch (e) {
+      console.error("Failed to delete", e);
+      alert("Failed to delete lead. Please try again.");
+      setLeads(previousLeads); // Rollback on error
     }
   };
 
@@ -93,6 +108,7 @@ const Leads: React.FC<LeadsProps> = ({ user }) => {
       case LeadStatus.QUALIFIED: return 'bg-purple-100 text-purple-700';
       case LeadStatus.PROPOSAL: return 'bg-amber-100 text-amber-700';
       case LeadStatus.WON: return 'bg-emerald-100 text-emerald-700';
+      case LeadStatus.LOST: return 'bg-slate-200 text-slate-600';
       default: return 'bg-slate-100 text-slate-700';
     }
   };
@@ -299,7 +315,7 @@ const Leads: React.FC<LeadsProps> = ({ user }) => {
                           <Pencil size={18} />
                         </button>
                         <button 
-                            onClick={() => handleDelete(lead.id)}
+                            onClick={() => setDeleteId(lead.id)}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
                             title="Delete Lead"
                         >
@@ -322,6 +338,38 @@ const Leads: React.FC<LeadsProps> = ({ user }) => {
         leadToEdit={editingLead}
         user={user}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteId(null)}></div>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm relative z-10 p-6">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Lead?</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Are you sure you want to delete this lead? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeleteId(null)}
+                            className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition-colors"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* AI Modal */}
       {aiModalOpen && (

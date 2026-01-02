@@ -319,6 +319,60 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
     });
 };
 
+export const addBulkProducts = async (products: Omit<Product, 'id'>[]): Promise<Product[]> => {
+    if (supabase) {
+        // Supabase supports bulk insert
+        try {
+            const { data, error } = await supabase.from('products').insert(products).select();
+            if (error) {
+                 console.error("Bulk insert failed", error);
+                 // Fallback: simple error
+                 throw error;
+            }
+            return (data || []).map(mapProduct);
+        } catch(err) {
+            console.error("Error adding bulk products", err);
+            throw err;
+        }
+    }
+
+    return new Promise((resolve) => {
+        const newProducts = products.map(p => ({
+            ...p,
+            id: Math.random().toString(36).substr(2, 9)
+        })) as Product[];
+        
+        productsCache = [...newProducts, ...productsCache];
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
+        notify('products');
+        setTimeout(() => resolve(newProducts), 500);
+    });
+};
+
+export const updateProduct = async (updatedProduct: Product): Promise<Product> => {
+    if (supabase) {
+        const { id, ...updates } = updatedProduct;
+        const payload: any = { ...updates };
+        if (updatedProduct.ownerId) payload["ownerId"] = updatedProduct.ownerId;
+
+        try {
+            const { error } = await supabase.from('products').update(payload).eq('id', id);
+            if (error) throw error;
+            return updatedProduct;
+        } catch(err) {
+             console.error("Error updating product", err);
+             throw err;
+        }
+    }
+
+    return new Promise((resolve) => {
+        productsCache = productsCache.map(p => p.id === updatedProduct.id ? updatedProduct : p);
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
+        notify('products');
+        setTimeout(() => resolve(updatedProduct), 300);
+    });
+};
+
 export const deleteProduct = async (id: string): Promise<void> => {
     if (supabase) {
         const { error } = await supabase.from('products').delete().eq('id', id);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TimesheetEntry } from '../types';
-import { Plus, Clock, Calendar } from 'lucide-react';
+import { Plus, Clock, Calendar, X } from 'lucide-react';
 
 const Timesheet: React.FC = () => {
   const [entries, setEntries] = useState<TimesheetEntry[]>([
@@ -8,11 +8,29 @@ const Timesheet: React.FC = () => {
     { id: '2', project: 'Client Meeting', task: 'Requirement Gathering', hours: 2, date: '2023-11-06' },
   ]);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newEntry, setNewEntry] = useState<Partial<TimesheetEntry>>({ project: '', task: '', hours: 1 });
+
+  const handleAdd = (e: React.FormEvent) => {
+      e.preventDefault();
+      const entry: TimesheetEntry = {
+          id: Date.now().toString(),
+          date: new Date().toISOString().split('T')[0],
+          ...newEntry as TimesheetEntry
+      };
+      setEntries([entry, ...entries]);
+      setIsModalOpen(false);
+      setNewEntry({ project: '', task: '', hours: 1 });
+  };
+
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Timesheet</h2>
-        <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 shadow-sm font-medium">
+        <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-700 shadow-sm font-medium"
+        >
           <Plus size={18} /> Log Time
         </button>
       </div>
@@ -50,6 +68,30 @@ const Timesheet: React.FC = () => {
              </tbody>
          </table>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
+                <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                <h3 className="text-xl font-bold text-slate-800 mb-6">Log Time Entry</h3>
+                <form onSubmit={handleAdd} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Project Name</label>
+                        <input className="w-full p-2 border rounded mt-1" required value={newEntry.project} onChange={e => setNewEntry({...newEntry, project: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Task Description</label>
+                        <input className="w-full p-2 border rounded mt-1" required value={newEntry.task} onChange={e => setNewEntry({...newEntry, task: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Hours</label>
+                        <input className="w-full p-2 border rounded mt-1" type="number" step="0.5" required value={newEntry.hours} onChange={e => setNewEntry({...newEntry, hours: Number(e.target.value)})} />
+                    </div>
+                    <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Save Entry</button>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

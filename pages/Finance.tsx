@@ -1,14 +1,33 @@
 import React, { useState } from 'react';
 import { FinanceRecord } from '../types';
-import { Plus, TrendingUp, TrendingDown, DollarSign, PieChart as PieIcon } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Finance: React.FC = () => {
   const [records, setRecords] = useState<FinanceRecord[]>([
     { id: '1', description: 'Office Supplies Sale', amount: 12000, type: 'Income', category: 'Sales', date: '2023-11-01' },
     { id: '2', description: 'Rent Payment', amount: 25000, type: 'Expense', category: 'Rent', date: '2023-11-02' },
-    { id: '3', description: 'IT Service', amount: 8000, type: 'Income', category: 'Services', date: '2023-11-03' },
   ]);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newRecord, setNewRecord] = useState<Partial<FinanceRecord>>({ description: '', amount: 0, category: '', type: 'Income' });
+
+  const handleAdd = (e: React.FormEvent) => {
+      e.preventDefault();
+      const r: FinanceRecord = {
+          id: Date.now().toString(),
+          date: new Date().toISOString().split('T')[0],
+          ...newRecord as FinanceRecord
+      };
+      setRecords([r, ...records]);
+      setIsModalOpen(false);
+      setNewRecord({ description: '', amount: 0, category: '', type: 'Income' });
+  };
+
+  const openModal = (type: 'Income' | 'Expense') => {
+      setNewRecord({ ...newRecord, type });
+      setIsModalOpen(true);
+  };
 
   const totalIncome = records.filter(r => r.type === 'Income').reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = records.filter(r => r.type === 'Expense').reduce((acc, curr) => acc + curr.amount, 0);
@@ -23,10 +42,10 @@ const Finance: React.FC = () => {
        <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Finance Overview</h2>
         <div className="flex gap-2">
-            <button className="bg-rose-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-rose-700 shadow-sm font-medium">
+            <button onClick={() => openModal('Expense')} className="bg-rose-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-rose-700 shadow-sm font-medium">
             <TrendingDown size={18} /> Add Expense
             </button>
-            <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm font-medium">
+            <button onClick={() => openModal('Income')} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-sm font-medium">
             <TrendingUp size={18} /> Add Income
             </button>
         </div>
@@ -95,6 +114,32 @@ const Finance: React.FC = () => {
             </table>
          </div>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
+                <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                <h3 className="text-xl font-bold text-slate-800 mb-6">Add {newRecord.type}</h3>
+                <form onSubmit={handleAdd} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Description</label>
+                        <input className="w-full p-2 border rounded mt-1" required value={newRecord.description} onChange={e => setNewRecord({...newRecord, description: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Category</label>
+                        <input className="w-full p-2 border rounded mt-1" required value={newRecord.category} onChange={e => setNewRecord({...newRecord, category: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700">Amount (₹)</label>
+                        <input className="w-full p-2 border rounded mt-1" type="number" required value={newRecord.amount} onChange={e => setNewRecord({...newRecord, amount: Number(e.target.value)})} />
+                    </div>
+                    <button type="submit" className={`w-full text-white py-2 rounded-lg font-medium ${newRecord.type === 'Income' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
+                        Save {newRecord.type}
+                    </button>
+                </form>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

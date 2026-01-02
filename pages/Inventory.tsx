@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { getProducts, addProduct, deleteProduct, subscribeToData } from '../services/dataService';
+import React, { useEffect, useState, useRef } from 'react';
+import { getProducts, addProduct, updateProduct, deleteProduct, addBulkProducts, subscribeToData } from '../services/dataService';
 import { Product, ProductCategory } from '../types';
-import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, CheckCircle, XCircle, ChevronDown, Globe, Lock } from 'lucide-react';
+import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, CheckCircle, XCircle, ChevronDown, Upload, Pencil, FileDown } from 'lucide-react';
 import { User } from '../services/authService';
 
 interface InventoryProps {
@@ -17,8 +17,9 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [stockFilter, setStockFilter] = useState<string>('All');
   
-  // Add Product Modal State
+  // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
       name: '',
       sku: '',
@@ -27,6 +28,9 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
       category: ProductCategory.STATIONERY,
       visibility: 'public'
   });
+
+  // Bulk Import Ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadProducts();
@@ -37,7 +41,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
     });
 
     return () => unsubscribe();
-  }, [user]); // Reload if user changes
+  }, [user]);
 
   const loadProducts = async () => {
     try {
@@ -54,21 +58,138 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
       }
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
+  const handleEditClick = (product: Product) => {
+      setNewProduct({ ...product });
+      setEditingId(product.id);
+      setIsAddModalOpen(true);
+  };
+
+  const openAddModal = () => {
+      setNewProduct({ 
+        category: ProductCategory.STATIONERY, 
+        price: 0, 
+        stock: 0, 
+        name: '', 
+        sku: '', 
+        visibility: 'public' 
+      });
+      setEditingId(null);
+      setIsAddModalOpen(true);
+  };
+
+  const handleExport = () => {
+    const csvContent = "data:text/csv;charset=utf-8," 
+        + "Name,SKU,Category,Price,Stock\n"
+        + products.map(p => `"${p.name}","${p.sku}","${p.category}",${p.price},${p.stock}`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "ravechi_inventory.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportClick = () => {
+      fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+          const text = e.target?.result as string;
+          if (!text) return;
+
+          // Simple CSV Parser (Assumes header: Name,SKU,Category,Price,Stock)
+          const lines = text.split('\n');
+          const productsToAdd: Omit<Product, 'id'>[] = [];
+          
+          // Skip header row if present (simple check if first row has "Name")
+          const startIdx = lines[0].toLowerCase().includes('name') ? 1 : 0;
+
+          for (let i = startIdx; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              
+              // Handle quotes loosely or just split by comma
+              const parts = line.split(',');
+              if (parts.length < 5) continue;
+
+              // Cleanup quotes if present
+              const clean = (s: string) => s ? s.replace(/^"|"$/g, '').trim() : '';
+
+              const name = clean(parts[0]);
+              const sku = clean(parts[1]);
+              const categoryStr = clean(parts[2]);
+              const price = parseFloat(parts[3]) || 0;
+              const stock = parseInt(parts[4]) || 0;
+
+              // Validate Category
+              let category = ProductCategory.STATIONERY;
+              if (Object.values(ProductCategory).includes(categoryStr as ProductCategory)) {
+                  category = categoryStr as ProductCategory;
+              }
+
+              if (name && sku) {
+                  productsToAdd.push({
+                      name,
+                      sku,
+                      category,
+                      price,
+                      stock,
+                      visibility: 'public',
+                      ownerId: user?.id || ''
+                  });
+              }
+          }
+
+          if (productsToAdd.length > 0) {
+              await addBulkProducts(productsToAdd);
+              alert(`Successfully imported ${productsToAdd.length} products.`);
+          } else {
+              alert("No valid products found in file. Please ensure CSV format: Name, SKU, Category, Price, Stock");
+          }
+          
+          // Reset file input
+          if (fileInputRef.current) fileInputRef.current.value = '';
+      };
+      reader.readAsText(file);
+  };
+
+  const handleSaveSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newProduct.name || !newProduct.sku) return;
 
-      const productToAdd: Omit<Product, 'id'> = {
-          name: newProduct.name!,
-          sku: newProduct.sku!,
-          price: Number(newProduct.price) || 0,
-          stock: Number(newProduct.stock) || 0,
-          category: newProduct.category || ProductCategory.STATIONERY,
-          visibility: newProduct.visibility || 'public',
-          ownerId: user?.id || ''
-      };
+      if (editingId) {
+          // Update Mode
+          const updated: Product = {
+              id: editingId,
+              name: newProduct.name!,
+              sku: newProduct.sku!,
+              price: Number(newProduct.price) || 0,
+              stock: Number(newProduct.stock) || 0,
+              category: newProduct.category || ProductCategory.STATIONERY,
+              visibility: newProduct.visibility || 'public',
+              ownerId: user?.id || ''
+          };
+          await updateProduct(updated);
+      } else {
+          // Add Mode
+          const productToAdd: Omit<Product, 'id'> = {
+              name: newProduct.name!,
+              sku: newProduct.sku!,
+              price: Number(newProduct.price) || 0,
+              stock: Number(newProduct.stock) || 0,
+              category: newProduct.category || ProductCategory.STATIONERY,
+              visibility: newProduct.visibility || 'public',
+              ownerId: user?.id || ''
+          };
+          await addProduct(productToAdd);
+      }
 
-      await addProduct(productToAdd);
       setIsAddModalOpen(false);
       setNewProduct({ 
           category: ProductCategory.STATIONERY, 
@@ -78,6 +199,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
           sku: '', 
           visibility: 'public' 
         });
+      setEditingId(null);
   };
 
   const getCategoryIcon = (cat: ProductCategory) => {
@@ -114,9 +236,27 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Inventory & Products</h2>
         <div className="flex gap-2">
-            <button className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors">Export List</button>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept=".csv,.txt"
+            />
             <button 
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={handleImportClick}
+                className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors flex items-center gap-2"
+            >
+                <Upload size={16} /> Import Bulk
+            </button>
+            <button 
+                onClick={handleExport}
+                className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors flex items-center gap-2"
+            >
+                <FileDown size={16} /> Export
+            </button>
+            <button 
+                onClick={openAddModal}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm font-medium shadow-sm shadow-indigo-200 transition-colors"
             >
                 <Plus size={18} /> Add Product
@@ -199,15 +339,14 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                 <th className="p-4 font-semibold text-slate-600">Price (INR)</th>
                 <th className="p-4 font-semibold text-slate-600">Stock</th>
                 <th className="p-4 font-semibold text-slate-600">Status</th>
-                <th className="p-4 font-semibold text-slate-600">Vis.</th>
                 <th className="p-4 font-semibold text-slate-600 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                 <tr><td colSpan={8} className="p-8 text-center">Loading Inventory...</td></tr>
+                 <tr><td colSpan={7} className="p-8 text-center">Loading Inventory...</td></tr>
               ) : filteredProducts.length === 0 ? (
-                  <tr><td colSpan={8} className="p-12 text-center text-slate-500">No products found matching your filters.</td></tr>
+                  <tr><td colSpan={7} className="p-12 text-center text-slate-500">No products found matching your filters.</td></tr>
               ) : filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4 font-medium text-slate-800 bg-white">{product.name}</td>
@@ -235,20 +374,23 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                         </span>
                     )}
                   </td>
-                  <td className="p-4 bg-white">
-                      {product.visibility === 'private' ? (
-                          <Lock size={16} className="text-slate-400" title="Private (Only you)" />
-                      ) : (
-                          <Globe size={16} className="text-slate-400" title="Public (Everyone)" />
-                      )}
-                  </td>
                   <td className="p-4 text-right bg-white">
-                      <button 
-                        onClick={() => handleDelete(product.id)}
-                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
-                      >
-                          <Trash2 size={18} />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                            onClick={() => handleEditClick(product)}
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
+                            title="Edit"
+                        >
+                            <Pencil size={18} />
+                        </button>
+                        <button 
+                            onClick={() => handleDelete(product.id)}
+                            className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
+                            title="Delete"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                      </div>
                   </td>
                 </tr>
               ))}
@@ -257,18 +399,18 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
         </div>
       </div>
 
-       {/* Add Product Modal */}
+       {/* Add/Edit Product Modal */}
        {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}></div>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg relative z-10">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-xl font-bold text-slate-800">Add New Product</h3>
+                    <h3 className="text-xl font-bold text-slate-800">{editingId ? 'Edit Product' : 'Add New Product'}</h3>
                     <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                         <X size={24} />
                     </button>
                 </div>
-                <form onSubmit={handleAddSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSaveSubmit} className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Product Name *</label>
@@ -321,46 +463,6 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                             />
                         </div>
                     </div>
-
-                    {/* Visibility Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Visibility</label>
-                        <div className="flex gap-4">
-                            <label className={`
-                                flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
-                                ${newProduct.visibility === 'public' 
-                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
-                            `}>
-                                <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    className="hidden" 
-                                    checked={newProduct.visibility === 'public'}
-                                    onChange={() => setNewProduct({...newProduct, visibility: 'public'})}
-                                />
-                                <Globe size={18} />
-                                <span className="font-medium text-sm">Public</span>
-                            </label>
-
-                            <label className={`
-                                flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
-                                ${newProduct.visibility === 'private' 
-                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
-                            `}>
-                                <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    className="hidden" 
-                                    checked={newProduct.visibility === 'private'}
-                                    onChange={() => setNewProduct({...newProduct, visibility: 'private'})}
-                                />
-                                <Lock size={18} />
-                                <span className="font-medium text-sm">Private</span>
-                            </label>
-                        </div>
-                    </div>
                   
                     <div className="pt-2 flex justify-end gap-3">
                          <button 
@@ -374,7 +476,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                             type="submit"
                             className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 shadow-sm shadow-indigo-200"
                          >
-                            Add Product
+                            {editingId ? 'Save Changes' : 'Add Product'}
                          </button>
                     </div>
                 </form>

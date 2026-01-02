@@ -67,18 +67,39 @@ export interface Proposal {
   clientName: string;
   value: number;
   date: string;
+  validUntil?: string;
+  description?: string;
   status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected';
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  hsn: string;
+  quantity: number;
+  rate: number;
+  gstRate: number; // e.g., 18
 }
 
 export interface Invoice {
   id: string;
   number: string;
   clientName: string;
+  clientGstin?: string;
+  clientAddress?: string;
   date: string;
   dueDate: string;
-  amount: number;
+  items: InvoiceItem[];
+  amount: number; // Total amount including tax
   status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
   type: 'Invoice' | 'Proforma';
+}
+
+export interface TicketComment {
+  id: string;
+  text: string;
+  author: string;
+  date: string;
 }
 
 export interface Ticket {
@@ -88,6 +109,7 @@ export interface Ticket {
   priority: 'Low' | 'Medium' | 'High';
   status: 'Open' | 'In Progress' | 'Resolved';
   date: string;
+  comments?: TicketComment[];
 }
 
 export interface FinanceRecord {

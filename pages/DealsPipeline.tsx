@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getLeads, updateLeadStatus, subscribeToData } from '../services/dataService';
+import { getLeads, updateLeadStatus, updateLead, subscribeToData } from '../services/dataService';
 import { Lead, LeadStatus } from '../types';
-import { MoreHorizontal, Plus, Pencil } from 'lucide-react';
+import { MoreHorizontal, Plus, Pencil, XCircle, X } from 'lucide-react';
 import AddLeadModal from '../components/AddLeadModal';
 import { User } from '../services/authService';
 
@@ -14,6 +14,11 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+
+  // Lost Reason Modal State
+  const [isLostModalOpen, setIsLostModalOpen] = useState(false);
+  const [leadToLose, setLeadToLose] = useState<Lead | null>(null);
+  const [lostReason, setLostReason] = useState('');
 
   useEffect(() => {
     loadLeads();
@@ -51,25 +56,61 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
     { id: LeadStatus.QUALIFIED, title: 'Qualified', color: 'bg-purple-50 border-purple-200' },
     { id: LeadStatus.PROPOSAL, title: 'Proposal Sent', color: 'bg-amber-50 border-amber-200' },
     { id: LeadStatus.WON, title: 'Closed Won', color: 'bg-emerald-50 border-emerald-200' },
+    { id: LeadStatus.LOST, title: 'Lost', color: 'bg-rose-50 border-rose-200' },
   ];
 
   const getLeadsByStatus = (status: LeadStatus) => {
     return leads.filter(lead => lead.status === status);
   };
 
-  // Mock drag and drop handler (in a real app, use react-dnd or dnd-kit)
+  // Move to Next Stage Logic
   const handleMoveNext = async (lead: Lead) => {
-      // Simple logic to move to next stage for demo
       const statuses = Object.values(LeadStatus);
       const currentIndex = statuses.indexOf(lead.status);
-      if (currentIndex < statuses.length - 2) { // Don't move past Won/Lost
+      // Ensure we don't move past Won or accidentally into Lost without reason
+      if (currentIndex < statuses.length - 2) { 
           const nextStatus = statuses[currentIndex + 1];
+          // Skip 'Lost' in the sequential flow if it happens to be next in enum (it's usually last)
+          if(nextStatus === LeadStatus.LOST) return;
+
           // Optimistic update
           const updatedLeads = leads.map(l => l.id === lead.id ? {...l, status: nextStatus} : l);
           setLeads(updatedLeads);
           await updateLeadStatus(lead.id, nextStatus);
-          // Auto-refresh handled by subscription
       }
+  };
+
+  // Open Lost Modal
+  const handleMarkLostClick = (lead: Lead) => {
+      setLeadToLose(lead);
+      setLostReason('');
+      setIsLostModalOpen(true);
+  };
+
+  // Confirm Lost
+  const confirmMarkLost = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!leadToLose) return;
+
+      const updatedNote = leadToLose.notes 
+          ? `${leadToLose.notes}\n\n[LOST REASON]: ${lostReason}` 
+          : `[LOST REASON]: ${lostReason}`;
+
+      const updatedLead = { 
+          ...leadToLose, 
+          status: LeadStatus.LOST,
+          notes: updatedNote
+      };
+
+      // Optimistic update
+      setLeads(leads.map(l => l.id === leadToLose.id ? updatedLead : l));
+      
+      // Update DB
+      await updateLead(updatedLead);
+      
+      setIsLostModalOpen(false);
+      setLeadToLose(null);
+      setLostReason('');
   };
 
   if (loading) return <div className="p-8 text-center text-slate-500">Loading pipeline...</div>;
@@ -123,16 +164,38 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
                     <h4 className="font-semibold text-slate-800 mb-1">{lead.name}</h4>
                     <p className="text-sm text-slate-500 mb-3 truncate">{lead.notes}</p>
                     
+                    {/* Reason Display for Lost Leads */}
+                    {lead.status === LeadStatus.LOST && lead.notes && lead.notes.includes('[LOST REASON]') && (
+                         <div className="mb-3 p-2 bg-rose-50 border border-rose-100 rounded text-xs text-rose-700 italic">
+                             {lead.notes.split('[LOST REASON]:')[1]}
+                         </div>
+                    )}
+
                     <div className="flex justify-between items-center pt-3 border-t border-slate-50">
                         <span className="font-semibold text-slate-700 text-sm">₹ {lead.value.toLocaleString('en-IN')}</span>
-                        {lead.status !== LeadStatus.WON && (
-                             <button 
-                                onClick={() => handleMoveNext(lead)}
-                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                             >
-                                Move &rarr;
-                             </button>
-                        )}
+                        
+                        <div className="flex gap-2">
+                            {/* Mark Lost Button - Only for active deals */}
+                            {lead.status !== LeadStatus.WON && lead.status !== LeadStatus.LOST && (
+                                <button
+                                    onClick={() => handleMarkLostClick(lead)}
+                                    className="text-xs text-rose-500 hover:text-rose-700 font-medium flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded border border-rose-100 transition-colors"
+                                    title="Mark as Lost"
+                                >
+                                    <XCircle size={12} /> Lost
+                                </button>
+                            )}
+
+                            {/* Move Next Button */}
+                            {lead.status !== LeadStatus.WON && lead.status !== LeadStatus.LOST && (
+                                <button 
+                                    onClick={() => handleMoveNext(lead)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                    Move &rarr;
+                                </button>
+                            )}
+                        </div>
                     </div>
                   </div>
                 ))}
@@ -148,6 +211,7 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
         </div>
       </div>
       
+      {/* Add/Edit Modal */}
       <AddLeadModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
@@ -155,6 +219,48 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
         leadToEdit={editingLead}
         user={user}
       />
+
+      {/* Lost Reason Modal */}
+      {isLostModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setIsLostModalOpen(false)}></div>
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md relative z-10 p-6">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold text-slate-800">Mark Deal as Lost</h3>
+                      <button onClick={() => setIsLostModalOpen(false)}><X className="text-slate-400 hover:text-slate-600" size={20}/></button>
+                  </div>
+                  <p className="text-sm text-slate-500 mb-4">
+                      Please provide a reason for losing the deal with <span className="font-semibold text-slate-700">{leadToLose?.company}</span>.
+                  </p>
+                  <form onSubmit={confirmMarkLost}>
+                      <textarea 
+                          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none text-slate-900 resize-none"
+                          rows={3}
+                          placeholder="Reason (e.g., Price too high, Competitor won...)"
+                          required
+                          value={lostReason}
+                          onChange={(e) => setLostReason(e.target.value)}
+                          autoFocus
+                      ></textarea>
+                      <div className="flex justify-end gap-3 mt-4">
+                          <button 
+                              type="button" 
+                              onClick={() => setIsLostModalOpen(false)}
+                              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
+                          >
+                              Cancel
+                          </button>
+                          <button 
+                              type="submit"
+                              className="px-4 py-2 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 shadow-sm"
+                          >
+                              Confirm Lost
+                          </button>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

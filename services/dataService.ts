@@ -1,10 +1,11 @@
-import { Lead, LeadStatus, Product, ProductCategory, PurchaseOrder, PurchaseOrderStatus } from "../types";
+import { Lead, LeadStatus, Product, ProductCategory, PurchaseOrder, PurchaseOrderStatus, AppUser } from "../types";
 import { supabase } from "./supabaseClient";
 
 // LocalStorage Keys (Fallback/Cache)
 const LEADS_KEY = 'ravechi_leads_v2';
 const PRODUCTS_KEY = 'ravechi_products_v2';
 const PO_KEY = 'ravechi_purchase_orders';
+const USERS_KEY = 'ravechi_users';
 
 // In-Memory Cache
 let leadsCache: Lead[] = [];
@@ -63,6 +64,26 @@ export const subscribeToData = (type: 'leads' | 'products' | 'purchaseOrders', c
     };
 };
 
+// --- HELPER: GET APP USERS ---
+export const getAppUsers = (): AppUser[] => {
+    try {
+        const saved = localStorage.getItem(USERS_KEY);
+        // Default users if none exist, to ensure functionality for the demo
+        if (!saved) {
+            const defaults: AppUser[] = [
+                { id: '1', name: 'Jaydeep D', email: 'jaydeep@ravechi.com', role: 'Admin', status: 'Active' },
+                { id: '2', name: 'Sales Rep 1', email: 'sales1@ravechi.com', role: 'Employee', status: 'Active' },
+                { id: '3', name: 'Accountant', email: 'accounts@ravechi.com', role: 'Employee', status: 'Active' },
+            ];
+            localStorage.setItem(USERS_KEY, JSON.stringify(defaults));
+            return defaults;
+        }
+        return JSON.parse(saved);
+    } catch (e) {
+        return [];
+    }
+};
+
 // --- DATA MAPPERS ---
 const mapLead = (item: any): Lead => ({
     id: item.id,
@@ -77,6 +98,7 @@ const mapLead = (item: any): Lead => ({
     lastContact: item.lastContact || item["lastContact"] || new Date().toISOString().split('T')[0],
     interest: Array.isArray(item.interest) ? item.interest : [],
     visibility: item.visibility || 'public',
+    sharedWith: Array.isArray(item.sharedWith) ? item.sharedWith : [],
     ownerId: item.ownerId || item["ownerId"] || ''
 });
 
@@ -99,7 +121,11 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
         let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
         
         if (currentUserId) {
-           query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
+           // Logic: Public OR Owned by Me OR Shared with Me
+           // Supabase OR syntax for array contains: sharedWith.cs.{id}
+           // Note: This assumes the column `sharedWith` exists and is text[]. If not, it might error.
+           // Fallback logic for basic public/private if schema not updated:
+           query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId},sharedWith.cs.{${currentUserId}}`);
         } else {
            query = query.eq('visibility', 'public');
         }
@@ -107,7 +133,10 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
         const { data, error } = await query;
         
         if (error) {
-            if (error.code === '42703') { 
+            // Fallback for missing columns or schema mismatch
+            console.warn("Supabase query error (likely schema mismatch), falling back to basic query", error);
+            if (error.code === '42703' || error.message.includes("sharedWith")) { 
+                // Retry without sharedWith/visibility logic complexity or just fetch all and filter in memory if small
                 const { data: fallbackData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
                 return (fallbackData || []).map(mapLead);
             }
@@ -123,7 +152,9 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
   // Local Storage Fallback
   return new Promise((resolve) => {
       const filtered = leadsCache.filter(l => 
-          l.visibility === 'public' || (currentUserId && l.ownerId === currentUserId)
+          l.visibility === 'public' || 
+          (currentUserId && l.ownerId === currentUserId) ||
+          (currentUserId && l.visibility === 'shared' && l.sharedWith?.includes(currentUserId))
       );
       setTimeout(() => resolve([...filtered]), 300);
   });
@@ -131,7 +162,11 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
 
 export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
   if (supabase) {
-      const payload: any = { ...lead, interest: lead.interest || [] };
+      const payload: any = { 
+          ...lead, 
+          interest: lead.interest || [],
+          sharedWith: lead.sharedWith || []
+      };
       try {
         const { data, error } = await supabase.from('leads').insert([{
              ...payload,

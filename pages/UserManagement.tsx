@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Plus, Shield, Mail, Pencil, Trash2, X, Search, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-
-interface AppUser {
-  id: string;
-  name: string;
-  email: string;
-  role: 'Admin' | 'Employee';
-  status: 'Active' | 'Inactive';
-}
+import { AppUser } from '../types';
 
 const UserManagement: React.FC = () => {
   // --- State ---
@@ -16,7 +9,7 @@ const UserManagement: React.FC = () => {
     return saved ? JSON.parse(saved) : [
       { id: '1', name: 'Jaydeep D', email: 'jaydeep@ravechi.com', role: 'Admin', status: 'Active' },
       { id: '2', name: 'Sales Rep 1', email: 'sales1@ravechi.com', role: 'Employee', status: 'Active' },
-      { id: '3', name: 'Accountant', email: 'accounts@ravechi.com', role: 'Employee', status: 'Inactive' },
+      { id: '3', name: 'Accountant', email: 'accounts@ravechi.com', role: 'Employee', status: 'Active' },
     ];
   });
 

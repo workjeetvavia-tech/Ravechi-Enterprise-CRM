@@ -21,6 +21,14 @@ export enum PurchaseOrderStatus {
   REACHED = 'Items Reached'
 }
 
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Employee';
+  status: 'Active' | 'Inactive';
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -33,7 +41,8 @@ export interface Lead {
   notes: string;
   lastContact: string;
   interest: string[];
-  visibility: 'public' | 'private';
+  visibility: 'public' | 'private' | 'shared';
+  sharedWith?: string[]; // Array of User IDs
   ownerId: string;
 }
 

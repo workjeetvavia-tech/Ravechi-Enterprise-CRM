@@ -6,10 +6,7 @@ const Proposals: React.FC = () => {
   // --- State ---
   const [proposals, setProposals] = useState<Proposal[]>(() => {
     const saved = localStorage.getItem('ravechi_proposals');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Office Stationery Annual Supply', clientName: 'Gujarat Traders', value: 120000, date: '2023-10-25', validUntil: '2023-11-25', description: 'Comprehensive supply of office stationery including A4 papers, files, pens, and staplers for all branches.', status: 'Sent' },
-      { id: '2', title: 'IT Infrastructure Upgrade', clientName: 'Tech Sol', value: 450000, date: '2023-10-28', validUntil: '2023-11-15', description: 'Upgrade of server room hardware and installation of new networking switches.', status: 'Draft' },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);

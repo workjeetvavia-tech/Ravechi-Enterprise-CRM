@@ -7,10 +7,7 @@ const Finance: React.FC = () => {
   // Load from local storage or use defaults
   const [records, setRecords] = useState<FinanceRecord[]>(() => {
     const saved = localStorage.getItem('ravechi_finance');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', description: 'Office Supplies Sale', amount: 12000, type: 'Income', category: 'Sales', date: '2023-11-01' },
-      { id: '2', description: 'Rent Payment', amount: 25000, type: 'Expense', category: 'Rent', date: '2023-11-02' },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);

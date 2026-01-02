@@ -29,23 +29,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
   
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [
-        { 
-            id: '1', 
-            number: type === 'Invoice' ? 'INV-2324-001' : 'PI-2324-001', 
-            clientName: 'Gujarat Traders', 
-            clientAddress: '101, CG Road, Ahmedabad, Gujarat',
-            clientGstin: '24ABCDE1234F1Z5',
-            date: '2023-11-01', 
-            dueDate: '2023-11-15', 
-            amount: 14160, 
-            status: type === 'Invoice' ? 'Paid' : 'Draft', 
-            type: type,
-            items: [
-                { id: '1', description: 'Dell Latitude Laptop', hsn: '8471', quantity: 1, rate: 12000, gstRate: 18 }
-            ]
-        }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);

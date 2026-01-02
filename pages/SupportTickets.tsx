@@ -7,28 +7,7 @@ const SupportTickets: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>(() => {
     const saved = localStorage.getItem('ravechi_tickets');
     if (saved) return JSON.parse(saved);
-    return [
-      { 
-        id: '1', 
-        subject: 'Printer Installation Issue', 
-        clientName: 'Gujarat Traders', 
-        priority: 'High', 
-        status: 'Open', 
-        date: '2023-11-01',
-        comments: [
-            { id: 'c1', text: 'Technician assigned.', author: 'Admin', date: '2023-11-01 10:00' }
-        ]
-      },
-      { 
-        id: '2', 
-        subject: 'Software License Renewal', 
-        clientName: 'Tech Sol', 
-        priority: 'Medium', 
-        status: 'In Progress', 
-        date: '2023-11-03',
-        comments: [] 
-      },
-    ];
+    return [];
   });
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

@@ -5,10 +5,7 @@ import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, X, Pencil, Trash2, A
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>(() => {
       const saved = localStorage.getItem('ravechi_clients');
-      return saved ? JSON.parse(saved) : [
-        { id: '1', name: 'Rahul Patel', company: 'Gujarat Traders', email: 'rahul@gtraders.com', phone: '+91 9876543210', address: 'CG Road, Ahmedabad', status: 'Active' },
-        { id: '2', name: 'Amit Shah', company: 'Tech Sol', email: 'amit@techsol.in', phone: '+91 9898989898', address: 'Ring Road, Surat', status: 'Active' },
-      ];
+      return saved ? JSON.parse(saved) : [];
   });
   const [searchTerm, setSearchTerm] = useState('');
   

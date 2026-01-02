@@ -9,7 +9,8 @@ import {
   Ticket, 
   Palette, 
   CreditCard, 
-  Settings
+  Settings,
+  ShoppingCart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'leads', label: 'Leads', icon: CheckSquare },
     { id: 'deals', label: 'Deal/ Opportunity', icon: Rocket },
+    { id: 'purchase-orders', label: 'Purchase Order', icon: ShoppingCart },
     { id: 'proposals', label: 'Proposal', icon: FileText },
     { id: 'clients', label: 'Client', icon: Briefcase },
     { id: 'proforma', label: 'Proforma Invoice', icon: Receipt },

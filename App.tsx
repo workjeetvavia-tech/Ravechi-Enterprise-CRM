@@ -15,6 +15,7 @@ import Invoices from './pages/Invoices';
 import SupportTickets from './pages/SupportTickets';
 import Finance from './pages/Finance';
 import LiveAssistant from './pages/LiveAssistant';
+import PurchaseOrders from './pages/PurchaseOrders';
 import { User, getCurrentUser, clearUserSession } from './services/authService';
 import { supabase } from './services/supabaseClient';
 
@@ -91,6 +92,8 @@ const App: React.FC = () => {
         return <Inventory user={currentUser} />;
       case 'deals':
         return <DealsPipeline user={currentUser} />;
+      case 'purchase-orders':
+        return <PurchaseOrders />;
       case 'settings':
         return <Settings user={currentUser} onLogout={handleLogout} />;
       case 'ai-tools': 

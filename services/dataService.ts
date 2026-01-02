@@ -1,13 +1,15 @@
-import { Lead, LeadStatus, Product, ProductCategory } from "../types";
+import { Lead, LeadStatus, Product, ProductCategory, PurchaseOrder, PurchaseOrderStatus } from "../types";
 import { supabase } from "./supabaseClient";
 
 // LocalStorage Keys (Fallback/Cache)
 const LEADS_KEY = 'ravechi_leads_v2';
 const PRODUCTS_KEY = 'ravechi_products_v2';
+const PO_KEY = 'ravechi_purchase_orders';
 
 // In-Memory Cache
 let leadsCache: Lead[] = [];
 let productsCache: Product[] = [];
+let purchaseOrdersCache: PurchaseOrder[] = [];
 
 const initLocalData = () => {
     try {
@@ -16,6 +18,9 @@ const initLocalData = () => {
 
         const storedProducts = localStorage.getItem(PRODUCTS_KEY);
         productsCache = storedProducts ? JSON.parse(storedProducts) : [];
+
+        const storedPOs = localStorage.getItem(PO_KEY);
+        purchaseOrdersCache = storedPOs ? JSON.parse(storedPOs) : [];
     } catch (e) {
         console.error("Failed to load local data", e);
     }
@@ -25,22 +30,23 @@ initLocalData();
 
 // --- EVENT SYSTEM ---
 type ChangeCallback = () => void;
-const listeners: { leads: ChangeCallback[], products: ChangeCallback[] } = {
+const listeners: { leads: ChangeCallback[], products: ChangeCallback[], purchaseOrders: ChangeCallback[] } = {
     leads: [],
-    products: []
+    products: [],
+    purchaseOrders: []
 };
 
-const notify = (type: 'leads' | 'products') => {
+const notify = (type: 'leads' | 'products' | 'purchaseOrders') => {
     listeners[type].forEach(cb => cb());
 };
 
 // Real-time Subscription
-export const subscribeToData = (type: 'leads' | 'products', callback: ChangeCallback) => {
+export const subscribeToData = (type: 'leads' | 'products' | 'purchaseOrders', callback: ChangeCallback) => {
     listeners[type].push(callback);
     
     let supabaseSubscription: any = null;
-    if (supabase) {
-        const table = type === 'leads' ? 'leads' : 'products';
+    if (supabase && (type === 'leads' || type === 'products')) {
+        const table = type;
         supabaseSubscription = supabase
             .channel(`public:${table}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: table }, () => {
@@ -312,24 +318,63 @@ export const deleteProduct = async (id: string): Promise<void> => {
                 supabaseSuccess = true;
             } else {
                 console.error("Supabase delete failed (likely permission/RLS):", error);
-                // We do NOT set supabaseSuccess to true here.
             }
         } catch(err) {
             console.error("Error deleting product from Supabase", err);
         }
     }
 
-    // Always delete from local cache
     productsCache = productsCache.filter(p => p.id !== id);
     localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
 
-    // IMPORTANT: Only notify listeners if Supabase succeeded OR if we are in local-only mode.
-    // If Supabase failed (e.g. RLS error), notifying will cause Inventory.tsx to reload data 
-    // from Supabase, which will effectively 'undo' the local delete visually.
-    // By NOT notifying on failure, we let the UI keep its optimistic state.
     if (!supabase || supabaseSuccess) {
         notify('products');
     } else {
-        console.warn("Skipping 'products' notification to prevent stale data reload after failed backend delete.");
+        console.warn("Skipping 'products' notification.");
     }
+};
+
+// --- PURCHASE ORDERS OPERATIONS (Local Storage Only for now) ---
+
+export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
+    return new Promise((resolve) => {
+        setTimeout(() => resolve([...purchaseOrdersCache]), 100);
+    });
+};
+
+export const addPurchaseOrder = async (po: Omit<PurchaseOrder, 'id'>): Promise<PurchaseOrder> => {
+    return new Promise((resolve) => {
+        const newPO = { ...po, id: Date.now().toString() } as PurchaseOrder;
+        purchaseOrdersCache = [newPO, ...purchaseOrdersCache];
+        localStorage.setItem(PO_KEY, JSON.stringify(purchaseOrdersCache));
+        notify('purchaseOrders');
+        setTimeout(() => resolve(newPO), 100);
+    });
+};
+
+export const updatePurchaseOrder = async (po: PurchaseOrder): Promise<PurchaseOrder> => {
+    return new Promise((resolve) => {
+        purchaseOrdersCache = purchaseOrdersCache.map(p => p.id === po.id ? po : p);
+        localStorage.setItem(PO_KEY, JSON.stringify(purchaseOrdersCache));
+        notify('purchaseOrders');
+        setTimeout(() => resolve(po), 100);
+    });
+};
+
+export const deletePurchaseOrder = async (id: string): Promise<void> => {
+    return new Promise((resolve) => {
+        purchaseOrdersCache = purchaseOrdersCache.filter(p => p.id !== id);
+        localStorage.setItem(PO_KEY, JSON.stringify(purchaseOrdersCache));
+        notify('purchaseOrders');
+        setTimeout(() => resolve(), 100);
+    });
+};
+
+export const updatePurchaseOrderStatus = async (id: string, status: PurchaseOrderStatus): Promise<void> => {
+    return new Promise((resolve) => {
+        purchaseOrdersCache = purchaseOrdersCache.map(p => p.id === id ? { ...p, status } : p);
+        localStorage.setItem(PO_KEY, JSON.stringify(purchaseOrdersCache));
+        notify('purchaseOrders');
+        setTimeout(() => resolve(), 100);
+    });
 };

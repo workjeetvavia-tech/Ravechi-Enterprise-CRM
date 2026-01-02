@@ -14,6 +14,13 @@ export enum ProductCategory {
   OFFICE_FURNITURE = 'Office Furniture'
 }
 
+export enum PurchaseOrderStatus {
+  NEEDED = 'Product Needed',
+  ORDERED = 'Order Given',
+  TRANSIT = 'Items on the way',
+  REACHED = 'Items Reached'
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -129,4 +136,15 @@ export interface TimesheetEntry {
   date: string;
   startTime?: string;
   endTime?: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  itemName: string;
+  vendor: string;
+  quantity: number;
+  estimatedCost: number;
+  status: PurchaseOrderStatus;
+  orderDate: string;
+  notes?: string;
 }

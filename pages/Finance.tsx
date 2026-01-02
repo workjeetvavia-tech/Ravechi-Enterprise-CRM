@@ -1,16 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FinanceRecord } from '../types';
-import { Plus, TrendingUp, TrendingDown, DollarSign, X } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, X, Trash2, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Finance: React.FC = () => {
-  const [records, setRecords] = useState<FinanceRecord[]>([
-    { id: '1', description: 'Office Supplies Sale', amount: 12000, type: 'Income', category: 'Sales', date: '2023-11-01' },
-    { id: '2', description: 'Rent Payment', amount: 25000, type: 'Expense', category: 'Rent', date: '2023-11-02' },
-  ]);
+  // Load from local storage or use defaults
+  const [records, setRecords] = useState<FinanceRecord[]>(() => {
+    const saved = localStorage.getItem('ravechi_finance');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', description: 'Office Supplies Sale', amount: 12000, type: 'Income', category: 'Sales', date: '2023-11-01' },
+      { id: '2', description: 'Rent Payment', amount: 25000, type: 'Expense', category: 'Rent', date: '2023-11-02' },
+    ];
+  });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newRecord, setNewRecord] = useState<Partial<FinanceRecord>>({ description: '', amount: 0, category: '', type: 'Income' });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // Persist to local storage
+  useEffect(() => {
+    localStorage.setItem('ravechi_finance', JSON.stringify(records));
+  }, [records]);
 
   const handleAdd = (e: React.FormEvent) => {
       e.preventDefault();
@@ -27,6 +37,17 @@ const Finance: React.FC = () => {
   const openModal = (type: 'Income' | 'Expense') => {
       setNewRecord({ ...newRecord, type });
       setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (id: string) => {
+      setDeleteId(id);
+  };
+
+  const confirmDelete = () => {
+      if (deleteId) {
+          setRecords(records.filter(r => r.id !== deleteId));
+          setDeleteId(null);
+      }
   };
 
   const totalIncome = records.filter(r => r.type === 'Income').reduce((acc, curr) => acc + curr.amount, 0);
@@ -95,11 +116,14 @@ const Finance: React.FC = () => {
                         <th className="p-4 text-xs font-semibold text-slate-500 uppercase">Description</th>
                         <th className="p-4 text-xs font-semibold text-slate-500 uppercase">Category</th>
                         <th className="p-4 text-xs font-semibold text-slate-500 uppercase text-right">Amount</th>
+                        <th className="p-4 text-xs font-semibold text-slate-500 uppercase text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                    {records.map(record => (
-                        <tr key={record.id} className="hover:bg-slate-50">
+                    {records.length === 0 ? (
+                        <tr><td colSpan={5} className="p-8 text-center text-slate-500">No transactions recorded.</td></tr>
+                    ) : records.map(record => (
+                        <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                             <td className="p-4 text-sm text-slate-600">{record.date}</td>
                             <td className="p-4 font-medium text-slate-800">{record.description}</td>
                             <td className="p-4 text-sm text-slate-600">
@@ -107,6 +131,15 @@ const Finance: React.FC = () => {
                             </td>
                             <td className={`p-4 font-bold text-right ${record.type === 'Income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {record.type === 'Income' ? '+' : '-'} ₹ {record.amount.toLocaleString()}
+                            </td>
+                            <td className="p-4 text-right">
+                                <button 
+                                    onClick={() => handleDeleteClick(record.id)}
+                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Delete Record"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </td>
                         </tr>
                     ))}
@@ -137,6 +170,38 @@ const Finance: React.FC = () => {
                         Save {newRecord.type}
                     </button>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteId(null)}></div>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm relative z-10 p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Record?</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Are you sure you want to delete this transaction record?
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeleteId(null)}
+                            className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition-colors"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
       )}

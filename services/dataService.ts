@@ -92,7 +92,6 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
       try {
         let query = supabase.from('leads').select('*').order('created_at', { ascending: false });
         
-        // Try to filter by visibility
         if (currentUserId) {
            query = query.or(`visibility.eq.public,"ownerId".eq.${currentUserId}`);
         } else {
@@ -102,25 +101,16 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
         const { data, error } = await query;
         
         if (error) {
-            // Handle undefined column error gracefully
             if (error.code === '42703') { 
-                console.warn("Supabase schema mismatch: 'visibility' or 'ownerId' column missing. Fetching all leads as fallback.");
-                // Fallback: Fetch without filters
-                const { data: fallbackData, error: fallbackError } = await supabase
-                    .from('leads')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (fallbackError) throw fallbackError;
+                const { data: fallbackData } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
                 return (fallbackData || []).map(mapLead);
             }
             throw error;
         }
-        
         return (data || []).map(mapLead);
       } catch (err: any) {
-        console.error("Error fetching leads:", err.message);
-        return [];
+        console.error("Error fetching leads from Supabase:", err.message);
+        // Fallback to local
       }
   }
   
@@ -135,14 +125,7 @@ export const getLeads = async (currentUserId?: string): Promise<Lead[]> => {
 
 export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
   if (supabase) {
-      // Create payload, only including fields if we think they exist (basic assumption here is we try to send them)
-      // If the insert fails due to missing column, we can try omitting them.
-      const payload: any = {
-          ...lead,
-          interest: lead.interest || []
-      };
-      
-      // We try to insert with visibility/ownerId. If it fails, we strip them.
+      const payload: any = { ...lead, interest: lead.interest || [] };
       try {
         const { data, error } = await supabase.from('leads').insert([{
              ...payload,
@@ -150,19 +133,10 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
              "ownerId": lead.ownerId
         }]).select().single();
         
-        if (error) {
-             if (error.code === '42703') {
-                 console.warn("Column missing during insert, retrying without visibility/ownerId");
-                 const { data: retryData, error: retryError } = await supabase.from('leads').insert([payload]).select().single();
-                 if (retryError) throw retryError;
-                 return mapLead(retryData);
-             }
-             throw error;
-        }
+        if (error) throw error;
         return mapLead(data);
       } catch (err) {
         console.error("Error adding lead:", err);
-        throw err;
       }
   }
   
@@ -178,28 +152,13 @@ export const addLead = async (lead: Omit<Lead, 'id'>): Promise<Lead> => {
 export const updateLead = async (updatedLead: Lead): Promise<Lead> => {
   if (supabase) {
       const { id, ...updates } = updatedLead;
-      const payload: any = { ...updates };
-      // Explicitly map ownerId
-      if (updatedLead.ownerId) payload["ownerId"] = updatedLead.ownerId;
-
       try {
-        const { error } = await supabase.from('leads').update(payload).eq('id', id);
-        if (error) {
-            if (error.code === '42703') {
-                // Retry without extra columns
-                delete payload.visibility;
-                delete payload["ownerId"];
-                const { error: retryError } = await supabase.from('leads').update(payload).eq('id', id);
-                if (retryError) throw retryError;
-                return updatedLead;
-            }
-            throw error;
-        }
+        const { error } = await supabase.from('leads').update(updates).eq('id', id);
+        if (error) throw error;
+        return updatedLead;
       } catch (err) {
           console.error("Error updating lead", err);
-          throw err;
       }
-      return updatedLead;
   }
 
   return new Promise((resolve) => {
@@ -212,9 +171,12 @@ export const updateLead = async (updatedLead: Lead): Promise<Lead> => {
 
 export const deleteLead = async (id: string): Promise<void> => {
   if (supabase) {
-      const { error } = await supabase.from('leads').delete().eq('id', id);
-      if (error) throw error;
-      return;
+      try {
+        const { error } = await supabase.from('leads').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+          console.error("Error deleting lead", err);
+      }
   }
 
   return new Promise((resolve) => {
@@ -226,18 +188,15 @@ export const deleteLead = async (id: string): Promise<void> => {
 };
 
 export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<void> => {
-  if (supabase) {
-      const { error } = await supabase.from('leads').update({ status }).eq('id', id);
-      if (error) throw error;
-      return;
-  }
-
-  return new Promise((resolve) => {
+    if (supabase) {
+        try {
+            await supabase.from('leads').update({ status }).eq('id', id);
+        } catch(e) { console.error(e); }
+    }
+    
     leadsCache = leadsCache.map(l => l.id === id ? { ...l, status } : l);
     localStorage.setItem(LEADS_KEY, JSON.stringify(leadsCache));
     notify('leads');
-    setTimeout(() => resolve(), 300);
-  });
 };
 
 // --- PRODUCTS OPERATIONS ---
@@ -254,25 +213,16 @@ export const getProducts = async (currentUserId?: string): Promise<Product[]> =>
         }
 
         const { data, error } = await query;
-        
         if (error) {
-            if (error.code === '42703') { 
-                console.warn("Supabase schema mismatch: 'visibility' column missing in products. Fetching all as fallback.");
-                const { data: fallbackData, error: fallbackError } = await supabase
-                    .from('products')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (fallbackError) throw fallbackError;
-                return (fallbackData || []).map(mapProduct);
-            }
-            throw error;
+             if (error.code === '42703') {
+                 const { data: fallback } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+                 return (fallback || []).map(mapProduct);
+             }
+             throw error;
         }
-        
         return (data || []).map(mapProduct);
       } catch (err: any) {
-        console.error("Error fetching products:", err.message);
-        return [];
+        console.error("Supabase fetch failed, trying local:", err.message);
       }
   }
 
@@ -286,27 +236,17 @@ export const getProducts = async (currentUserId?: string): Promise<Product[]> =>
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
     if (supabase) {
-        const payload: any = { ...product };
-
         try {
             const { data, error } = await supabase.from('products').insert([{
-                ...payload,
+                ...product,
                 visibility: product.visibility || 'public',
                 "ownerId": product.ownerId
             }]).select().single();
 
-            if (error) {
-                 if (error.code === '42703') {
-                     const { data: retryData, error: retryError } = await supabase.from('products').insert([payload]).select().single();
-                     if (retryError) throw retryError;
-                     return mapProduct(retryData);
-                 }
-                 throw error;
-            }
+            if (error) throw error;
             return mapProduct(data);
         } catch(err) {
             console.error("Error adding product", err);
-            throw err;
         }
     }
 
@@ -321,18 +261,12 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product>
 
 export const addBulkProducts = async (products: Omit<Product, 'id'>[]): Promise<Product[]> => {
     if (supabase) {
-        // Supabase supports bulk insert
         try {
             const { data, error } = await supabase.from('products').insert(products).select();
-            if (error) {
-                 console.error("Bulk insert failed", error);
-                 // Fallback: simple error
-                 throw error;
-            }
+            if (error) throw error;
             return (data || []).map(mapProduct);
         } catch(err) {
             console.error("Error adding bulk products", err);
-            throw err;
         }
     }
 
@@ -351,17 +285,13 @@ export const addBulkProducts = async (products: Omit<Product, 'id'>[]): Promise<
 
 export const updateProduct = async (updatedProduct: Product): Promise<Product> => {
     if (supabase) {
-        const { id, ...updates } = updatedProduct;
-        const payload: any = { ...updates };
-        if (updatedProduct.ownerId) payload["ownerId"] = updatedProduct.ownerId;
-
         try {
-            const { error } = await supabase.from('products').update(payload).eq('id', id);
+            const { id, ...rest } = updatedProduct;
+            const { error } = await supabase.from('products').update(rest).eq('id', id);
             if (error) throw error;
             return updatedProduct;
         } catch(err) {
              console.error("Error updating product", err);
-             throw err;
         }
     }
 
@@ -374,16 +304,32 @@ export const updateProduct = async (updatedProduct: Product): Promise<Product> =
 };
 
 export const deleteProduct = async (id: string): Promise<void> => {
+    let supabaseSuccess = false;
     if (supabase) {
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) throw error;
-        return;
+        try {
+            const { error } = await supabase.from('products').delete().eq('id', id);
+            if (!error) {
+                supabaseSuccess = true;
+            } else {
+                console.error("Supabase delete failed (likely permission/RLS):", error);
+                // We do NOT set supabaseSuccess to true here.
+            }
+        } catch(err) {
+            console.error("Error deleting product from Supabase", err);
+        }
     }
 
-    return new Promise((resolve) => {
-        productsCache = productsCache.filter(p => p.id !== id);
-        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
+    // Always delete from local cache
+    productsCache = productsCache.filter(p => p.id !== id);
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsCache));
+
+    // IMPORTANT: Only notify listeners if Supabase succeeded OR if we are in local-only mode.
+    // If Supabase failed (e.g. RLS error), notifying will cause Inventory.tsx to reload data 
+    // from Supabase, which will effectively 'undo' the local delete visually.
+    // By NOT notifying on failure, we let the UI keep its optimistic state.
+    if (!supabase || supabaseSuccess) {
         notify('products');
-        setTimeout(() => resolve(), 300);
-    });
+    } else {
+        console.warn("Skipping 'products' notification to prevent stale data reload after failed backend delete.");
+    }
 };

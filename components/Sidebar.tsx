@@ -9,9 +9,6 @@ import {
   Ticket, 
   Palette, 
   CreditCard, 
-  Clock, 
-  LayoutGrid, 
-  User,
   Settings
 } from 'lucide-react';
 
@@ -33,11 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
     { id: 'invoices', label: 'Invoice', icon: Receipt },
     { id: 'tickets', label: 'Support Ticket', icon: Ticket },
     { id: 'inventory', label: 'Product/ Services', icon: Palette },
-    { id: 'finance', label: 'Finance', icon: CreditCard }, // Arrow functionality simulated by page view
-    { id: 'timesheet', label: 'Timesheet', icon: Clock },
-    { id: 'reports', label: 'Report', icon: LayoutGrid },
-    { id: 'users', label: 'User', icon: User },
-    { id: 'settings', label: 'Settings', icon: Settings }, // Kept for app settings
+    { id: 'finance', label: 'Finance', icon: CreditCard },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (

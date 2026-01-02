@@ -127,4 +127,6 @@ export interface TimesheetEntry {
   task: string;
   hours: number;
   date: string;
+  startTime?: string;
+  endTime?: string;
 }

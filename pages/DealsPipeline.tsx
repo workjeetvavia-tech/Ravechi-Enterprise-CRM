@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { getLeads, updateLeadStatus, updateLead, subscribeToData } from '../services/dataService';
+import React, { useEffect, useState, useRef } from 'react';
+import { getLeads, updateLeadStatus, updateLead, deleteLead, subscribeToData } from '../services/dataService';
 import { Lead, LeadStatus } from '../types';
-import { MoreHorizontal, Plus, Pencil, XCircle, X } from 'lucide-react';
+import { MoreHorizontal, Plus, Pencil, XCircle, X, Trash2, AlertTriangle } from 'lucide-react';
 import AddLeadModal from '../components/AddLeadModal';
 import { User } from '../services/authService';
 
@@ -15,6 +15,10 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
+  // Dropdown & Delete State
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   // Lost Reason Modal State
   const [isLostModalOpen, setIsLostModalOpen] = useState(false);
   const [leadToLose, setLeadToLose] = useState<Lead | null>(null);
@@ -27,7 +31,14 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
         loadLeads();
     });
     
-    return () => unsubscribe();
+    // Close dropdowns on click outside
+    const handleClickOutside = () => setActiveDropdownId(null);
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+        unsubscribe();
+        document.removeEventListener('click', handleClickOutside);
+    };
   }, [user]);
 
   const loadLeads = async () => {
@@ -39,15 +50,42 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
     }
   };
 
-  const handleEdit = (lead: Lead, e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent card click event if needed later
+  const handleEdit = (lead: Lead, e?: React.MouseEvent) => {
+      if(e) e.stopPropagation();
       setEditingLead(lead);
       setIsModalOpen(true);
+      setActiveDropdownId(null);
   };
 
   const handleCreate = () => {
       setEditingLead(null);
       setIsModalOpen(true);
+  };
+
+  const toggleDropdown = (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      setActiveDropdownId(activeDropdownId === id ? null : id);
+  };
+
+  const handleDeleteClick = (id: string, e?: React.MouseEvent) => {
+      if(e) e.stopPropagation();
+      setDeleteId(id);
+      setActiveDropdownId(null);
+  };
+
+  const confirmDelete = async () => {
+      if (deleteId) {
+          // Optimistic update
+          setLeads(current => current.filter(l => l.id !== deleteId));
+          setDeleteId(null);
+          
+          try {
+              await deleteLead(deleteId);
+          } catch (e) {
+              console.error("Failed to delete deal", e);
+              loadLeads(); // Revert on error
+          }
+      }
   };
 
   const columns = [
@@ -148,7 +186,7 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
                   >
                     <div className="flex justify-between items-start mb-2">
                         <span className="bg-white text-xs font-medium text-slate-500 border border-slate-200 px-2 py-0.5 rounded">{lead.company}</span>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 relative">
                              <button 
                                 onClick={(e) => handleEdit(lead, e)}
                                 className="text-slate-400 hover:text-indigo-600 p-1 rounded"
@@ -156,9 +194,30 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
                              >
                                 <Pencil size={14} />
                             </button>
-                            <button className="text-slate-400 hover:text-slate-600 p-1 rounded">
+                            <button 
+                                onClick={(e) => toggleDropdown(e, lead.id)}
+                                className={`text-slate-400 hover:text-slate-600 p-1 rounded ${activeDropdownId === lead.id ? 'bg-slate-100 text-slate-600' : ''}`}
+                            >
                                 <MoreHorizontal size={16} />
                             </button>
+
+                            {/* Dropdown Menu */}
+                            {activeDropdownId === lead.id && (
+                                <div className="absolute right-0 top-6 w-32 bg-white rounded-lg shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <button 
+                                        onClick={(e) => handleEdit(lead, e)}
+                                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                    >
+                                        <Pencil size={14} /> Edit
+                                    </button>
+                                    <button 
+                                        onClick={(e) => handleDeleteClick(lead.id, e)}
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                        <Trash2 size={14} /> Delete
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <h4 className="font-semibold text-slate-800 mb-1">{lead.name}</h4>
@@ -219,6 +278,38 @@ const DealsPipeline: React.FC<DealsPipelineProps> = ({ user }) => {
         leadToEdit={editingLead}
         user={user}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteId(null)}></div>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm relative z-10 p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Deal?</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Are you sure you want to delete this deal? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeleteId(null)}
+                            className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition-colors"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* Lost Reason Modal */}
       {isLostModalOpen && (

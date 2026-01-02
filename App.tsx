@@ -14,9 +14,6 @@ import Proposals from './pages/Proposals';
 import Invoices from './pages/Invoices';
 import SupportTickets from './pages/SupportTickets';
 import Finance from './pages/Finance';
-import Timesheet from './pages/Timesheet';
-import Reports from './pages/Reports';
-import UserManagement from './pages/UserManagement';
 import LiveAssistant from './pages/LiveAssistant';
 import { User, getCurrentUser, clearUserSession } from './services/authService';
 import { supabase } from './services/supabaseClient';
@@ -112,12 +109,6 @@ const App: React.FC = () => {
         return <SupportTickets />;
       case 'finance':
         return <Finance />;
-      case 'timesheet':
-        return <Timesheet />;
-      case 'reports':
-        return <Reports />;
-      case 'users':
-        return <UserManagement />;
       default:
         return <Dashboard user={currentUser} />;
     }

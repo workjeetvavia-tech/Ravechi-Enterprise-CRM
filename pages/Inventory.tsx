@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { getProducts, addProduct, updateProduct, deleteProduct, addBulkProducts, subscribeToData } from '../services/dataService';
 import { Product, ProductCategory } from '../types';
-import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, CheckCircle, XCircle, ChevronDown, Upload, Pencil, FileDown } from 'lucide-react';
+import { Package, Search, AlertCircle, Laptop, PenTool, Trash2, Plus, X, CheckCircle, XCircle, ChevronDown, Upload, Pencil, FileDown, AlertTriangle } from 'lucide-react';
 import { User } from '../services/authService';
 
 interface InventoryProps {
@@ -20,6 +20,8 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
       name: '',
       sku: '',
@@ -52,9 +54,25 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-      if(window.confirm("Are you sure you want to delete this product?")) {
-          await deleteProduct(id);
+  const handleDeleteClick = (id: string) => {
+      setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+      if (deleteId) {
+          const idToDelete = deleteId;
+          // Optimistic update for immediate feedback
+          const prevProducts = [...products];
+          setProducts(current => current.filter(p => p.id !== idToDelete));
+          setDeleteId(null);
+          
+          try {
+              await deleteProduct(idToDelete);
+          } catch (e) {
+              console.error("Failed to delete product", e);
+              alert("Failed to delete product. Please try again.");
+              setProducts(prevProducts); 
+          }
       }
   };
 
@@ -149,6 +167,8 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
           if (productsToAdd.length > 0) {
               await addBulkProducts(productsToAdd);
               alert(`Successfully imported ${productsToAdd.length} products.`);
+              // Trigger reload manually just in case
+              loadProducts();
           } else {
               alert("No valid products found in file. Please ensure CSV format: Name, SKU, Category, Price, Stock");
           }
@@ -163,31 +183,42 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
       e.preventDefault();
       if (!newProduct.name || !newProduct.sku) return;
 
-      if (editingId) {
-          // Update Mode
-          const updated: Product = {
-              id: editingId,
-              name: newProduct.name!,
-              sku: newProduct.sku!,
-              price: Number(newProduct.price) || 0,
-              stock: Number(newProduct.stock) || 0,
-              category: newProduct.category || ProductCategory.STATIONERY,
-              visibility: newProduct.visibility || 'public',
-              ownerId: user?.id || ''
-          };
-          await updateProduct(updated);
-      } else {
-          // Add Mode
-          const productToAdd: Omit<Product, 'id'> = {
-              name: newProduct.name!,
-              sku: newProduct.sku!,
-              price: Number(newProduct.price) || 0,
-              stock: Number(newProduct.stock) || 0,
-              category: newProduct.category || ProductCategory.STATIONERY,
-              visibility: newProduct.visibility || 'public',
-              ownerId: user?.id || ''
-          };
-          await addProduct(productToAdd);
+      try {
+        if (editingId) {
+            // Update Mode
+            const updated: Product = {
+                id: editingId,
+                name: newProduct.name!,
+                sku: newProduct.sku!,
+                price: Number(newProduct.price) || 0,
+                stock: Number(newProduct.stock) || 0,
+                category: newProduct.category || ProductCategory.STATIONERY,
+                visibility: newProduct.visibility || 'public',
+                ownerId: user?.id || ''
+            };
+            
+            // Optimistic update
+            setProducts(prev => prev.map(p => p.id === editingId ? updated : p));
+            await updateProduct(updated);
+        } else {
+            // Add Mode
+            const productToAdd: Omit<Product, 'id'> = {
+                name: newProduct.name!,
+                sku: newProduct.sku!,
+                price: Number(newProduct.price) || 0,
+                stock: Number(newProduct.stock) || 0,
+                category: newProduct.category || ProductCategory.STATIONERY,
+                visibility: newProduct.visibility || 'public',
+                ownerId: user?.id || ''
+            };
+            await addProduct(productToAdd);
+            // Re-fetch to get ID
+            loadProducts();
+        }
+      } catch (err) {
+          console.error("Operation failed", err);
+          alert("Failed to save product.");
+          loadProducts(); // Revert
       }
 
       setIsAddModalOpen(false);
@@ -384,7 +415,7 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                             <Pencil size={18} />
                         </button>
                         <button 
-                            onClick={() => handleDelete(product.id)}
+                            onClick={() => handleDeleteClick(product.id)}
                             className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors"
                             title="Delete"
                         >
@@ -480,6 +511,38 @@ const Inventory: React.FC<InventoryProps> = ({ user }) => {
                          </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteId(null)}></div>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm relative z-10 p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex flex-col items-center text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Product?</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                        Are you sure you want to delete this product? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 w-full">
+                        <button 
+                            onClick={() => setDeleteId(null)}
+                            className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition-colors"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
       )}

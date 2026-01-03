@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Sparkles, Mic } from 'lucide-react';
+import { Menu, Sparkles } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
@@ -8,78 +8,87 @@ import DealsPipeline from './pages/DealsPipeline';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import EmailVerification from './pages/EmailVerification';
+import ForgotPassword from './pages/ForgotPassword';
 import AiAssistant from './pages/AiAssistant';
 import Clients from './pages/Clients';
 import Proposals from './pages/Proposals';
 import Invoices from './pages/Invoices';
 import SupportTickets from './pages/SupportTickets';
 import Finance from './pages/Finance';
-import LiveAssistant from './pages/LiveAssistant';
 import PurchaseOrders from './pages/PurchaseOrders';
-import { User, getCurrentUser, clearUserSession } from './services/authService';
-import { supabase } from './services/supabaseClient';
+import { User, clearUserSession } from './services/authService';
+import { auth } from './services/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
+  
+  // Auth Pages State: login | signup | verify | forgot-password
+  const [authPage, setAuthPage] = useState<'login' | 'signup' | 'verify' | 'forgot-password'>('login');
+  const [pendingEmail, setPendingEmail] = useState('');
+  
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check initial session
-    const checkSession = async () => {
-        try {
-            const user = await getCurrentUser();
-            if (user) {
-                setCurrentUser(user);
-                setIsAuthenticated(true);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    checkSession();
-
-    // 2. Listen for auth changes (Login, Logout, Token Refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-             // Map the session user to our app user format manually or refetch
-             const appUser: User = {
-                id: session.user.id,
-                email: session.user.email || '',
-                name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                role: session.user.user_metadata?.role || 'employee',
-                avatar: session.user.user_metadata?.name ? session.user.user_metadata.name.substring(0, 2).toUpperCase() : 'U'
-             };
-             setCurrentUser(appUser);
-             setIsAuthenticated(true);
-        } else if (event === 'SIGNED_OUT') {
+    // Listen for Firebase auth changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+             if (user.emailVerified) {
+                 const appUser: User = {
+                    id: user.uid,
+                    email: user.email || '',
+                    name: user.displayName || user.email?.split('@')[0] || 'User',
+                    role: 'employee',
+                    avatar: user.displayName ? user.displayName.substring(0, 2).toUpperCase() : 'U'
+                 };
+                 setCurrentUser(appUser);
+                 setIsAuthenticated(true);
+             } else {
+                 // User exists but email not verified.
+                 // We don't log them in, they must manually verify.
+                 // We rely on Login page logic to show the verification screen if they try to login again.
+                 setIsAuthenticated(false);
+                 setCurrentUser(null);
+             }
+        } else {
             setCurrentUser(null);
             setIsAuthenticated(false);
             setCurrentView('dashboard');
-            setAuthPage('login');
+            // Keep current authPage if it is 'verify' or 'signup' or 'forgot-password', otherwise default to login
+            if (authPage === 'verify' || authPage === 'signup' || authPage === 'forgot-password') {
+                // do nothing, stay on current auth view
+            } else {
+                setAuthPage('login');
+            }
         }
+        setIsLoading(false);
     });
 
-    return () => {
-        subscription.unsubscribe();
-    };
-  }, []);
+    return () => unsubscribe();
+  }, [authPage]);
 
   const handleLogin = (user: User) => {
-    // Handled by onAuthStateChange, but we can set state immediately for better UX
     setCurrentUser(user);
     setIsAuthenticated(true);
   };
 
   const handleLogout = async () => {
     await clearUserSession();
-    // State update handled by onAuthStateChange
+    setAuthPage('login');
+  };
+
+  const handleGoToVerification = (email: string) => {
+      setPendingEmail(email);
+      setAuthPage('verify');
+  };
+
+  const handleGoToForgotPassword = (email: string) => {
+      setPendingEmail(email);
+      setAuthPage('forgot-password');
   };
 
   const renderContent = () => {
@@ -98,8 +107,6 @@ const App: React.FC = () => {
         return <Settings user={currentUser} onLogout={handleLogout} />;
       case 'ai-tools': 
         return <AiAssistant />;
-      case 'live-assistant': 
-        return <LiveAssistant />;
       case 'clients':
         return <Clients />;
       case 'proposals':
@@ -126,10 +133,21 @@ const App: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    if (authPage === 'signup') {
-      return <Signup onSignup={handleLogin} onNavigateToLogin={() => setAuthPage('login')} />;
+    if (authPage === 'verify') {
+        return <EmailVerification email={pendingEmail} onNavigateToLogin={() => setAuthPage('login')} />;
     }
-    return <Login onLogin={handleLogin} onNavigateToSignup={() => setAuthPage('signup')} />;
+    if (authPage === 'forgot-password') {
+        return <ForgotPassword initialEmail={pendingEmail} onNavigateToLogin={() => setAuthPage('login')} />;
+    }
+    if (authPage === 'signup') {
+      return <Signup onNavigateToVerification={handleGoToVerification} onNavigateToLogin={() => setAuthPage('login')} />;
+    }
+    return <Login 
+        onLogin={handleLogin} 
+        onNavigateToVerification={handleGoToVerification} 
+        onNavigateToSignup={() => setAuthPage('signup')}
+        onNavigateToForgotPassword={handleGoToForgotPassword}
+    />;
   }
 
   return (
@@ -163,18 +181,8 @@ const App: React.FC = () => {
         </main>
         
         {/* Floating Action Buttons */}
-        {currentView !== 'ai-tools' && currentView !== 'live-assistant' && (
+        {currentView !== 'ai-tools' && (
            <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
-             <button 
-                onClick={() => setCurrentView('live-assistant')}
-                className="bg-white text-indigo-600 p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center border border-indigo-100 group"
-                title="Live Audio Assistant"
-             >
-               <span className="p-1">
-                 <Mic size={20} />
-               </span>
-             </button>
-             
              <button 
                onClick={() => setCurrentView('ai-tools')}
                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center gap-2 group"

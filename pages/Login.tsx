@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Lock, Briefcase, ArrowRight, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Briefcase, ArrowRight, Mail, AlertCircle } from 'lucide-react';
 import { loginUser, User } from '../services/authService';
 
 interface LoginProps {
   onLogin: (user: User) => void;
   onNavigateToSignup: () => void;
+  onNavigateToVerification: (email: string) => void;
+  onNavigateToForgotPassword: (email: string) => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup, onNavigateToVerification, onNavigateToForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +24,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
       onLogin(user);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Invalid login credentials. Please try again.");
+      if (err.message === "Email not verified") {
+          onNavigateToVerification(email);
+          return;
+      }
+      
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+          setError("Password or Email Incorrect");
+      } else {
+          setError("Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +110,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
                     <input type="checkbox" className="mr-2 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                     Remember me
                 </label>
-                <a href="#" className="text-indigo-600 hover:text-indigo-800 font-medium">Forgot password?</a>
+                <button 
+                    type="button"
+                    onClick={() => onNavigateToForgotPassword(email)}
+                    className="text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                    Forgot password?
+                </button>
             </div>
 
             <button

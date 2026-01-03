@@ -1,38 +1,41 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Lock, Mail, ArrowRight, Briefcase, AlertCircle, CheckCircle } from 'lucide-react';
-import { signupUser, User } from '../services/authService';
+import { User as UserIcon, Lock, Mail, ArrowRight, Briefcase, AlertCircle, Upload } from 'lucide-react';
+import { signupUser } from '../services/authService';
 
 interface SignupProps {
-  onSignup: (user: User) => void;
+  onNavigateToVerification: (email: string) => void;
   onNavigateToLogin: () => void;
 }
 
-const Signup: React.FC<SignupProps> = ({ onSignup, onNavigateToLogin }) => {
+const Signup: React.FC<SignupProps> = ({ onNavigateToVerification, onNavigateToLogin }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'employee'>('employee');
+  const [repeatPassword, setRepeatPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    setSuccessMessage(null);
+
+    if (password !== repeatPassword) {
+        setError("Passwords do not match");
+        return;
+    }
+
+    setIsLoading(true);
     
     try {
-      const user = await signupUser(name, email, password, role);
-      // If we get here without error, the user is logged in (session active)
-      onSignup(user);
+      await signupUser(name, email, password);
+      // Instead of logging in, go to verification
+      onNavigateToVerification(email);
     } catch (err: any) {
       console.error(err);
-      if (err.message && err.message.includes("check your email")) {
-        // Handle email verification case as a success in terms of UX
-        setSuccessMessage(err.message);
+      if (err.code === 'auth/email-already-in-use') {
+          setError("User already exists. Sign in?");
       } else {
-        setError(err.message || "Signup failed. Please try again.");
+          setError(err.message || "Signup failed. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -71,17 +74,29 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onNavigateToLogin }) => {
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
                 <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-start gap-2">
-                <CheckCircle size={18} className="flex-shrink-0 mt-0.5" />
-                <span>{successMessage}</span>
+                {error === "User already exists. Sign in?" && (
+                    <button onClick={onNavigateToLogin} className="underline font-bold ml-1">Yes</button>
+                )}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Profile Photo Upload (UI Only) */}
+            <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">Profile Photo</label>
+                 <div className="flex items-center gap-3">
+                     <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400">
+                         <UserIcon size={24} />
+                     </div>
+                     <label className="cursor-pointer bg-white px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
+                         <Upload size={16} />
+                         Upload
+                         <input type="file" className="hidden" accept="image/*" />
+                     </label>
+                 </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
               <div className="relative">
@@ -112,47 +127,35 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onNavigateToLogin }) => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 text-slate-400" size={18} />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow text-slate-900 bg-white"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole('admin')}
-                  className={`py-2 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                    role === 'admin' 
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Administrator
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('employee')}
-                  className={`py-2 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                    role === 'employee' 
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-700' 
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  Employee
-                </button>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow text-slate-900 bg-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Repeat Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                    <input
+                      type="password"
+                      required
+                      value={repeatPassword}
+                      onChange={(e) => setRepeatPassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow text-slate-900 bg-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
             </div>
 
             <button

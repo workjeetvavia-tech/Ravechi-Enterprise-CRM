@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // This injects the environment variable API_KEY into the code wherever process.env.API_KEY is used
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
+      // Default to empty string to prevent "undefined" replacement causing crashes
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY || "")
     }
   }
 })

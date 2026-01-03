@@ -1,14 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 import { Lead } from "../types";
 
-// Initialize Gemini Client
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to lazy-load the client
+// This prevents the app from crashing immediately if the API key is missing
+const getAiClient = (): GoogleGenAI | null => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("Gemini API Key is missing. AI features will not work.");
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
-const MODEL_NAME = "gemini-3-flash-preview";
+const MODEL_NAME = "gemini-2.0-flash-exp"; 
 
 export const generateColdEmail = async (lead: Lead): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const ai = getAiClient();
+  if (!ai) {
     return "API Key is missing. Please add API_KEY to your environment variables.";
   }
 
@@ -41,7 +49,8 @@ export const generateColdEmail = async (lead: Lead): Promise<string> => {
 };
 
 export const analyzeLeadPotential = async (lead: Lead): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const ai = getAiClient();
+  if (!ai) {
     return "API Key is missing.";
   }
 
@@ -70,7 +79,8 @@ export const analyzeLeadPotential = async (lead: Lead): Promise<string> => {
 };
 
 export const suggestBundle = async (products: string[]): Promise<string> => {
-  if (!process.env.API_KEY) {
+  const ai = getAiClient();
+  if (!ai) {
     return "API Key is missing.";
   }
 
@@ -93,7 +103,8 @@ export const suggestBundle = async (products: string[]): Promise<string> => {
 };
 
 export const chatWithGemini = async (message: string, history: { role: string, parts: { text: string }[] }[]): Promise<string> => {
-    if (!process.env.API_KEY) {
+    const ai = getAiClient();
+    if (!ai) {
         return "API Key is missing.";
     }
 

@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from '../types';
+import { getClients, addClient, updateClient, deleteClient, subscribeToData } from '../services/dataService';
 import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, X, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 
 const Clients: React.FC = () => {
-  const [clients, setClients] = useState<Client[]>(() => {
-      const saved = localStorage.getItem('ravechi_clients');
-      return saved ? JSON.parse(saved) : [];
-  });
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Modal & Form State
@@ -21,41 +20,42 @@ const Clients: React.FC = () => {
   // Delete State
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
+    loadClients();
+    const unsubscribe = subscribeToData('clients', loadClients);
+    
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdownId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+        unsubscribe();
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const handleSaveClient = (e: React.FormEvent) => {
+  const loadClients = async () => {
+      try {
+          const data = await getClients();
+          setClients(data);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleSaveClient = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newClient.name) return;
 
-      let updatedClients: Client[];
-
       if (editingId) {
-          // Edit existing
-          updatedClients = clients.map(c => 
-              c.id === editingId ? { ...c, ...newClient } as Client : c
-          );
+          await updateClient({ ...newClient, id: editingId } as Client);
       } else {
-          // Add new
-          const client: Client = {
-              id: Date.now().toString(),
-              ...newClient as Client
-          };
-          updatedClients = [client, ...clients];
+          await addClient(newClient as Omit<Client, 'id'>);
       }
-
-      setClients(updatedClients);
-      localStorage.setItem('ravechi_clients', JSON.stringify(updatedClients));
       
-      // Reset
+      // Close and Reset
       setIsModalOpen(false);
       setNewClient({ name: '', company: '', email: '', phone: '', address: '', status: 'Active' });
       setEditingId(null);
@@ -73,12 +73,12 @@ const Clients: React.FC = () => {
       setActiveDropdownId(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
       if (deleteId) {
-          const updated = clients.filter(c => c.id !== deleteId);
-          setClients(updated);
-          localStorage.setItem('ravechi_clients', JSON.stringify(updated));
+          // Optimistic update
+          setClients(prev => prev.filter(c => c.id !== deleteId));
           setDeleteId(null);
+          await deleteClient(deleteId);
       }
   };
 
@@ -114,7 +114,7 @@ const Clients: React.FC = () => {
               <input 
                 type="text"
                 placeholder="Search clients..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -133,7 +133,11 @@ const Clients: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(client => (
+              {loading ? (
+                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">Loading clients...</td></tr>
+              ) : filtered.length === 0 ? (
+                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">No clients found matching your search.</td></tr>
+              ) : filtered.map(client => (
                 <tr key={client.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
                     <div className="font-medium text-slate-800">{client.name}</div>
@@ -189,11 +193,6 @@ const Clients: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
-                  <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-500">No clients found matching your search.</td>
-                  </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -208,30 +207,30 @@ const Clients: React.FC = () => {
                 <form onSubmit={handleSaveClient} className="space-y-4">
                     <div>
                         <label className="text-sm font-medium text-slate-700">Client Name *</label>
-                        <input className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500" required value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Company *</label>
-                        <input className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500" required value={newClient.company} onChange={e => setNewClient({...newClient, company: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required value={newClient.company} onChange={e => setNewClient({...newClient, company: e.target.value})} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                          <div>
                             <label className="text-sm font-medium text-slate-700">Email</label>
-                            <input className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500" type="email" value={newClient.email} onChange={e => setNewClient({...newClient, email: e.target.value})} />
+                            <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" type="email" value={newClient.email} onChange={e => setNewClient({...newClient, email: e.target.value})} />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-slate-700">Phone</label>
-                            <input className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} />
+                            <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} />
                         </div>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Address</label>
-                        <textarea className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500" rows={2} value={newClient.address} onChange={e => setNewClient({...newClient, address: e.target.value})} />
+                        <textarea className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" rows={2} value={newClient.address} onChange={e => setNewClient({...newClient, address: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Status</label>
                         <select 
-                            className="w-full p-2 border rounded mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white" 
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" 
                             value={newClient.status} 
                             onChange={e => setNewClient({...newClient, status: e.target.value as any})}
                         >

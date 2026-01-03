@@ -190,7 +190,7 @@ const Timesheet: React.FC = () => {
                     <div>
                         <label className="text-sm font-medium text-slate-700">Date *</label>
                         <input 
-                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900" 
                             type="date" 
                             required 
                             value={formData.date} 
@@ -200,7 +200,7 @@ const Timesheet: React.FC = () => {
                     <div>
                         <label className="text-sm font-medium text-slate-700">Project Name *</label>
                         <input 
-                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900" 
                             required 
                             placeholder="e.g. Website Redesign"
                             value={formData.project} 
@@ -210,7 +210,7 @@ const Timesheet: React.FC = () => {
                     <div>
                         <label className="text-sm font-medium text-slate-700">Task Description *</label>
                         <input 
-                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900" 
                             required 
                             placeholder="e.g. Frontend Development"
                             value={formData.task} 
@@ -222,7 +222,7 @@ const Timesheet: React.FC = () => {
                          <div>
                             <label className="text-sm font-medium text-slate-700">Start Time</label>
                             <input 
-                                className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                                className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900" 
                                 type="time"
                                 value={formData.startTime} 
                                 onChange={e => setFormData({...formData, startTime: e.target.value})} 
@@ -231,7 +231,7 @@ const Timesheet: React.FC = () => {
                         <div>
                             <label className="text-sm font-medium text-slate-700">End Time</label>
                             <input 
-                                className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                                className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-900" 
                                 type="time"
                                 value={formData.endTime} 
                                 onChange={e => setFormData({...formData, endTime: e.target.value})} 
@@ -244,7 +244,7 @@ const Timesheet: React.FC = () => {
                         <div className="relative">
                             <Clock className="absolute left-3 top-2.5 text-slate-400" size={16} />
                             <input 
-                                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50" 
+                                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-slate-50 text-slate-900" 
                                 type="number" 
                                 step="0.01" 
                                 required 

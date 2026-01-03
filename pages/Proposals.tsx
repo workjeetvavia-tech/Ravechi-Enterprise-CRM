@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Proposal } from '../types';
+import { getProposals, addProposal, updateProposal, deleteProposal, subscribeToData } from '../services/dataService';
 import { Plus, FileText, CheckCircle, XCircle, Clock, X, Eye, Pencil, Trash2, Calendar, AlertTriangle, Printer, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 const Proposals: React.FC = () => {
   // --- State ---
-  const [proposals, setProposals] = useState<Proposal[]>(() => {
-    const saved = localStorage.getItem('ravechi_proposals');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -26,8 +25,19 @@ const Proposals: React.FC = () => {
 
   // --- Effects ---
   useEffect(() => {
-    localStorage.setItem('ravechi_proposals', JSON.stringify(proposals));
-  }, [proposals]);
+    loadProposals();
+    const unsubscribe = subscribeToData('proposals', loadProposals);
+    return () => unsubscribe();
+  }, []);
+
+  const loadProposals = async () => {
+      try {
+          const data = await getProposals();
+          setProposals(data);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   // --- Handlers ---
 
@@ -50,30 +60,32 @@ const Proposals: React.FC = () => {
     setDeleteId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
+      // Optimistic update
       setProposals(prev => prev.filter(p => p.id !== deleteId));
       setDeleteId(null);
+      await deleteProposal(deleteId);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!currentProposal.title || !currentProposal.clientName) return;
 
       if (currentProposal.id) {
           // Update Existing
-          setProposals(prev => prev.map(p => p.id === currentProposal.id ? { ...p, ...currentProposal } as Proposal : p));
+          await updateProposal(currentProposal as Proposal);
       } else {
           // Create New
-          const newProp: Proposal = {
-              id: Date.now().toString(),
-              date: new Date().toISOString().split('T')[0],
-              ...currentProposal as Proposal
-          };
-          setProposals([newProp, ...proposals]);
+          await addProposal({
+              ...currentProposal,
+              date: new Date().toISOString().split('T')[0]
+          } as Omit<Proposal, 'id'>);
       }
       setIsFormModalOpen(false);
+      // Wait a tick to reload, or let subscription handle it
+      setTimeout(loadProposals, 100); 
   };
 
   const handleDownloadPdf = async () => {
@@ -120,7 +132,9 @@ const Proposals: React.FC = () => {
         </button>
       </div>
 
-      {proposals.length === 0 ? (
+      {loading ? (
+          <div className="p-8 text-center text-slate-500">Loading proposals...</div>
+      ) : proposals.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300">
             <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                 <FileText size={32} />
@@ -185,26 +199,26 @@ const Proposals: React.FC = () => {
                 <form onSubmit={handleSave} className="space-y-4">
                     <div>
                         <label className="text-sm font-medium text-slate-700">Proposal Title *</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={currentProposal.title} onChange={e => setCurrentProposal({...currentProposal, title: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required value={currentProposal.title} onChange={e => setCurrentProposal({...currentProposal, title: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Client Name *</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={currentProposal.clientName} onChange={e => setCurrentProposal({...currentProposal, clientName: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" required value={currentProposal.clientName} onChange={e => setCurrentProposal({...currentProposal, clientName: e.target.value})} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                          <div>
                             <label className="text-sm font-medium text-slate-700">Estimated Value (₹)</label>
-                            <input className="w-full p-2 border rounded mt-1" type="number" value={currentProposal.value} onChange={e => setCurrentProposal({...currentProposal, value: Number(e.target.value)})} />
+                            <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" type="number" value={currentProposal.value} onChange={e => setCurrentProposal({...currentProposal, value: Number(e.target.value)})} />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-slate-700">Valid Until</label>
-                            <input className="w-full p-2 border rounded mt-1" type="date" value={currentProposal.validUntil} onChange={e => setCurrentProposal({...currentProposal, validUntil: e.target.value})} />
+                            <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" type="date" value={currentProposal.validUntil} onChange={e => setCurrentProposal({...currentProposal, validUntil: e.target.value})} />
                         </div>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Status</label>
                         <select 
-                            className="w-full p-2 border rounded mt-1"
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
                             value={currentProposal.status}
                             onChange={e => setCurrentProposal({...currentProposal, status: e.target.value as any})}
                         >
@@ -217,7 +231,7 @@ const Proposals: React.FC = () => {
                     <div>
                         <label className="text-sm font-medium text-slate-700">Description / Scope of Work</label>
                         <textarea 
-                            className="w-full p-2 border rounded mt-1" 
+                            className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900" 
                             rows={4}
                             value={currentProposal.description}
                             onChange={e => setCurrentProposal({...currentProposal, description: e.target.value})}
@@ -240,9 +254,15 @@ const Proposals: React.FC = () => {
                     <h3 className="font-bold text-slate-700">Proposal Details</h3>
                     <div className="flex gap-2">
                         <button 
+                            onClick={() => window.print()} 
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 text-sm rounded hover:bg-indigo-50 transition-colors shadow-sm"
+                        >
+                            <Printer size={16} /> Print
+                        </button>
+                        <button 
                             onClick={handleDownloadPdf}
                             disabled={isDownloading}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
                         >
                             {isDownloading ? 'Generating...' : <><Download size={16}/> Download PDF</>}
                         </button>

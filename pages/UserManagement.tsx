@@ -103,7 +103,7 @@ const UserManagement: React.FC = () => {
             <input 
               type="text" 
               placeholder="Search users..." 
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -204,7 +204,7 @@ const UserManagement: React.FC = () => {
                 <input 
                   type="text" 
                   required
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-white text-slate-900"
                   placeholder="e.g. John Doe"
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
@@ -216,7 +216,7 @@ const UserManagement: React.FC = () => {
                 <input 
                   type="email" 
                   required
-                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow bg-white text-slate-900"
                   placeholder="e.g. john@company.com"
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
@@ -227,7 +227,7 @@ const UserManagement: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                   <select 
-                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900"
                     value={formData.role}
                     onChange={e => setFormData({...formData, role: e.target.value as 'Admin' | 'Employee'})}
                   >
@@ -238,7 +238,7 @@ const UserManagement: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                   <select 
-                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900"
                     value={formData.status}
                     onChange={e => setFormData({...formData, status: e.target.value as 'Active' | 'Inactive'})}
                   >

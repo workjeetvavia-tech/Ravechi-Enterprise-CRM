@@ -276,7 +276,7 @@ const SupportTickets: React.FC = () => {
                 <div className="p-4 bg-white border-t border-slate-200">
                     <form onSubmit={addComment} className="flex gap-2">
                         <input 
-                            className="flex-1 p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            className="flex-1 p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white text-slate-900"
                             placeholder="Type a comment..."
                             value={newComment}
                             onChange={e => setNewComment(e.target.value)}
@@ -323,15 +323,15 @@ const SupportTickets: React.FC = () => {
                 <form onSubmit={handleSaveTicket} className="space-y-4">
                     <div>
                         <label className="text-sm font-medium text-slate-700">Subject</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={newTicket.subject} onChange={e => setNewTicket({...newTicket, subject: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900" required value={newTicket.subject} onChange={e => setNewTicket({...newTicket, subject: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Client Name</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={newTicket.clientName} onChange={e => setNewTicket({...newTicket, clientName: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900" required value={newTicket.clientName} onChange={e => setNewTicket({...newTicket, clientName: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Priority</label>
-                        <select className="w-full p-2 border rounded mt-1" value={newTicket.priority} onChange={e => setNewTicket({...newTicket, priority: e.target.value as any})}>
+                        <select className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900" value={newTicket.priority} onChange={e => setNewTicket({...newTicket, priority: e.target.value as any})}>
                             <option value="Low">Low</option>
                             <option value="Medium">Medium</option>
                             <option value="High">High</option>
@@ -339,7 +339,7 @@ const SupportTickets: React.FC = () => {
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Status</label>
-                        <select className="w-full p-2 border rounded mt-1" value={newTicket.status} onChange={e => setNewTicket({...newTicket, status: e.target.value as any})}>
+                        <select className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white text-slate-900" value={newTicket.status} onChange={e => setNewTicket({...newTicket, status: e.target.value as any})}>
                             <option value="Open">Open</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Resolved">Resolved</option>

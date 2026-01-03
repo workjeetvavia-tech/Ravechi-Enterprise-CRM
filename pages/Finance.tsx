@@ -153,15 +153,15 @@ const Finance: React.FC = () => {
                 <form onSubmit={handleAdd} className="space-y-4">
                     <div>
                         <label className="text-sm font-medium text-slate-700">Description</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={newRecord.description} onChange={e => setNewRecord({...newRecord, description: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900" required value={newRecord.description} onChange={e => setNewRecord({...newRecord, description: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Category</label>
-                        <input className="w-full p-2 border rounded mt-1" required value={newRecord.category} onChange={e => setNewRecord({...newRecord, category: e.target.value})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900" required value={newRecord.category} onChange={e => setNewRecord({...newRecord, category: e.target.value})} />
                     </div>
                     <div>
                         <label className="text-sm font-medium text-slate-700">Amount (₹)</label>
-                        <input className="w-full p-2 border rounded mt-1" type="number" required value={newRecord.amount} onChange={e => setNewRecord({...newRecord, amount: Number(e.target.value)})} />
+                        <input className="w-full p-2 border border-slate-300 rounded-lg mt-1 focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900" type="number" required value={newRecord.amount} onChange={e => setNewRecord({...newRecord, amount: Number(e.target.value)})} />
                     </div>
                     <button type="submit" className={`w-full text-white py-2 rounded-lg font-medium ${newRecord.type === 'Income' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
                         Save {newRecord.type}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem } from '../types';
+import { getInvoices, addInvoice, updateInvoice, deleteInvoice, subscribeToData } from '../services/dataService';
 import { Plus, Download, Filter, Eye, Printer, X, Pencil } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -8,7 +9,7 @@ interface InvoicesProps {
   type: 'Invoice' | 'Proforma';
 }
 
-// --- Helper: Number to Words (Simplified for Indian Context) ---
+// --- Helper: Number to Words ---
 const numToWords = (num: number): string => {
   const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -26,13 +27,8 @@ const numToWords = (num: number): string => {
 };
 
 const Invoices: React.FC<InvoicesProps> = ({ type }) => {
-  // LocalStorage Persistence
-  const STORAGE_KEY = `ravechi_${type.toLowerCase()}s`;
-  
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
@@ -49,14 +45,23 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
   });
   const [currentItem, setCurrentItem] = useState<Partial<InvoiceItem>>({ description: '', hsn: '', quantity: 1, rate: 0, gstRate: 18 });
 
-  // Sync state to local storage whenever invoices change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
-  }, [invoices, STORAGE_KEY]);
+    loadInvoices();
+    const unsubscribe = subscribeToData('invoices', loadInvoices);
+    return () => unsubscribe();
+  }, [type]);
+
+  const loadInvoices = async () => {
+      try {
+          const data = await getInvoices(type);
+          setInvoices(data);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const handleCreate = () => {
     setFormData({
-        // Ensure id is undefined for new creations
         id: undefined, 
         clientName: '',
         clientAddress: '',
@@ -94,25 +99,26 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
       }, 0);
   };
 
-  const saveInvoice = () => {
+  const saveInvoice = async () => {
       if(!formData.clientName || !formData.items?.length) return;
       const totalAmount = calculateTotal(formData.items);
       
+      const invoiceData = {
+          ...formData,
+          amount: Math.round(totalAmount),
+          type
+      };
+
       if (formData.id) {
           // Edit Mode
-          setInvoices(prev => prev.map(inv => inv.id === formData.id ? { ...formData, amount: Math.round(totalAmount) } as Invoice : inv));
+          await updateInvoice(invoiceData as Invoice);
       } else {
           // Create Mode
-          const newInvoice: Invoice = {
-              id: Date.now().toString(),
-              ...formData as Invoice,
-              type,
-              amount: Math.round(totalAmount)
-          };
-          setInvoices([newInvoice, ...invoices]);
+          await addInvoice(invoiceData as Omit<Invoice, 'id'>);
       }
 
       setIsModalOpen(false);
+      loadInvoices(); // Refresh to get latest data
   };
 
   const getStatusColor = (status: string) => {
@@ -125,7 +131,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
     }
   };
 
-  // --- Invoice Viewer Component (Indian Format) ---
+  // --- Invoice Viewer Component ---
   const InvoiceViewer = ({ invoice, onClose }: { invoice: Invoice, onClose: () => void }) => {
     const [isDownloading, setIsDownloading] = useState(false);
     const subTotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
@@ -163,9 +169,15 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                     <h3 className="font-bold text-slate-800">Preview {type}</h3>
                     <div className="flex gap-2">
                         <button 
+                            onClick={() => window.print()} 
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-indigo-200 text-indigo-700 rounded hover:bg-indigo-50 transition-colors shadow-sm"
+                        >
+                            <Printer size={18} /> Print
+                        </button>
+                        <button 
                             onClick={handleDownloadPdf} 
                             disabled={isDownloading}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
                         >
                             {isDownloading ? (
                                 <span>Generating...</span>
@@ -340,7 +352,9 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {invoices.length === 0 ? (
+            {loading ? (
+                <tr><td colSpan={6} className="p-8 text-center text-slate-500">Loading invoices...</td></tr>
+            ) : invoices.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-slate-500">No invoices generated yet.</td></tr>
             ) : invoices.map(inv => (
               <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
@@ -387,20 +401,20 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                         <div className="space-y-4">
                             <h4 className="font-semibold text-slate-700 border-b pb-2">Client Details</h4>
                             <input 
-                                className="w-full p-2 border rounded" 
+                                className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none" 
                                 placeholder="Client Name"
                                 value={formData.clientName}
                                 onChange={e => setFormData({...formData, clientName: e.target.value})}
                             />
                             <textarea 
-                                className="w-full p-2 border rounded" 
+                                className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none" 
                                 placeholder="Address"
                                 rows={2}
                                 value={formData.clientAddress}
                                 onChange={e => setFormData({...formData, clientAddress: e.target.value})}
                             />
                             <input 
-                                className="w-full p-2 border rounded" 
+                                className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none" 
                                 placeholder="Client GSTIN"
                                 value={formData.clientGstin}
                                 onChange={e => setFormData({...formData, clientGstin: e.target.value})}
@@ -411,12 +425,12 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                              <div className="flex gap-4">
                                 <div className="flex-1">
                                     <label className="text-xs text-slate-500">Invoice Number</label>
-                                    <input className="w-full p-2 border rounded bg-slate-50" value={formData.number} disabled />
+                                    <input className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-700" value={formData.number} disabled />
                                 </div>
                                 <div className="flex-1">
                                     <label className="text-xs text-slate-500">Status</label>
                                     <select 
-                                        className="w-full p-2 border rounded"
+                                        className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none"
                                         value={formData.status}
                                         onChange={e => setFormData({...formData, status: e.target.value as any})}
                                     >
@@ -430,11 +444,11 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                              <div className="flex gap-4">
                                 <div className="flex-1">
                                     <label className="text-xs text-slate-500">Date</label>
-                                    <input type="date" className="w-full p-2 border rounded" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                                    <input type="date" className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
                                 </div>
                                 <div className="flex-1">
                                     <label className="text-xs text-slate-500">Due Date</label>
-                                    <input type="date" className="w-full p-2 border rounded" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
+                                    <input type="date" className="w-full p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
                                 </div>
                              </div>
                         </div>
@@ -470,11 +484,11 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                         
                         {/* Add Item Row */}
                         <div className="flex gap-2 items-center bg-slate-50 p-2 rounded">
-                            <input className="flex-grow p-2 border rounded text-sm" placeholder="Item Description" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} />
-                            <input className="w-24 p-2 border rounded text-sm" placeholder="HSN" value={currentItem.hsn} onChange={e => setCurrentItem({...currentItem, hsn: e.target.value})} />
-                            <input className="w-20 p-2 border rounded text-sm" type="number" placeholder="Qty" value={currentItem.quantity} onChange={e => setCurrentItem({...currentItem, quantity: Number(e.target.value)})} />
-                            <input className="w-32 p-2 border rounded text-sm" type="number" placeholder="Rate" value={currentItem.rate} onChange={e => setCurrentItem({...currentItem, rate: Number(e.target.value)})} />
-                            <select className="w-20 p-2 border rounded text-sm" value={currentItem.gstRate} onChange={e => setCurrentItem({...currentItem, gstRate: Number(e.target.value)})}>
+                            <input className="flex-grow p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Item Description" value={currentItem.description} onChange={e => setCurrentItem({...currentItem, description: e.target.value})} />
+                            <input className="w-24 p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="HSN" value={currentItem.hsn} onChange={e => setCurrentItem({...currentItem, hsn: e.target.value})} />
+                            <input className="w-20 p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" type="number" placeholder="Qty" value={currentItem.quantity} onChange={e => setCurrentItem({...currentItem, quantity: Number(e.target.value)})} />
+                            <input className="w-32 p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" type="number" placeholder="Rate" value={currentItem.rate} onChange={e => setCurrentItem({...currentItem, rate: Number(e.target.value)})} />
+                            <select className="w-20 p-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-sm" value={currentItem.gstRate} onChange={e => setCurrentItem({...currentItem, gstRate: Number(e.target.value)})}>
                                 <option value="5">5%</option>
                                 <option value="12">12%</option>
                                 <option value="18">18%</option>

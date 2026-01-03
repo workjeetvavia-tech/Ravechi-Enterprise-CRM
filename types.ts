@@ -107,7 +107,7 @@ export interface Invoice {
   dueDate: string;
   items: InvoiceItem[];
   amount: number; // Total amount including tax
-  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
   type: 'Invoice' | 'Proforma';
 }
 

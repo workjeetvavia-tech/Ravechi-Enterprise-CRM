@@ -106,7 +106,7 @@ const LiveAssistant: React.FC = () => {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
-          systemInstruction: "You are a friendly and helpful AI customer support agent for Ravechi Enterprises (a Stationery and IT company in Gujarat). You are fluent in English, Hindi, and Gujarati. You must detect the language the user is speaking and respond in that same language. Be concise and professional.",
+          systemInstruction: "You are a friendly and helpful AI customer support agent for Ravechi Enterprises Pvt. Ltd (a Stationery and IT company in Vadodara, Gujarat). You are fluent in English, Hindi, and Gujarati. You must detect the language the user is speaking and respond in that same language. Be concise and professional.",
         },
         callbacks: {
           onopen: () => {

@@ -148,7 +148,7 @@ const App: React.FC = () => {
              <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600">
                <Menu size={24} />
              </button>
-             <h1 className="font-bold text-slate-800">Ravechi Enterprises</h1>
+             <h1 className="font-bold text-slate-800">Ravechi Enterprises Pvt. Ltd</h1>
            </div>
            <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xs border border-indigo-200">
              {currentUser?.avatar || 'U'}

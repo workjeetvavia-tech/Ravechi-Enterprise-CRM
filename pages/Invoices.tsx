@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem } from '../types';
-import { Plus, Download, Filter, Eye, Printer, X, Trash2, Pencil, AlertTriangle } from 'lucide-react';
+import { Plus, Download, Filter, Eye, Printer, X, Pencil } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface InvoicesProps {
   type: 'Invoice' | 'Proforma';
@@ -34,7 +36,6 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Invoice>>({
@@ -48,6 +49,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
   });
   const [currentItem, setCurrentItem] = useState<Partial<InvoiceItem>>({ description: '', hsn: '', quantity: 1, rate: 0, gstRate: 18 });
 
+  // Sync state to local storage whenever invoices change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
   }, [invoices, STORAGE_KEY]);
@@ -71,20 +73,6 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
   const handleEdit = (inv: Invoice) => {
       setFormData({ ...inv });
       setIsModalOpen(true);
-  };
-
-  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      setDeleteId(id);
-  };
-
-  const confirmDelete = () => {
-      if (deleteId) {
-          const updatedInvoices = invoices.filter(i => i.id !== deleteId);
-          setInvoices(updatedInvoices);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedInvoices));
-          setDeleteId(null);
-      }
   };
 
   const addItem = () => {
@@ -132,25 +120,60 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
       case 'Paid': return 'text-emerald-600 bg-emerald-50 border-emerald-100';
       case 'Overdue': return 'text-rose-600 bg-rose-50 border-rose-100';
       case 'Sent': return 'text-blue-600 bg-blue-50 border-blue-100';
+      case 'Cancelled': return 'text-slate-500 bg-slate-100 border-slate-200 decoration-slate-400';
       default: return 'text-slate-600 bg-slate-100 border-slate-200';
     }
   };
 
   // --- Invoice Viewer Component (Indian Format) ---
   const InvoiceViewer = ({ invoice, onClose }: { invoice: Invoice, onClose: () => void }) => {
+    const [isDownloading, setIsDownloading] = useState(false);
     const subTotal = invoice.items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
     const totalTax = invoice.items.reduce((acc, item) => acc + ((item.quantity * item.rate) * (item.gstRate/100)), 0);
     const grandTotal = Math.round(subTotal + totalTax);
 
+    const handleDownloadPdf = async () => {
+        const element = document.getElementById('invoice-print');
+        if (!element) return;
+        
+        setIsDownloading(true);
+        try {
+            const canvas = await html2canvas(element, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`${type}_${invoice.number}.pdf`);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert("Failed to generate PDF");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm overflow-y-auto">
             <div className="bg-white w-full max-w-4xl min-h-[90vh] shadow-2xl rounded-lg flex flex-col">
                 {/* Toolbar */}
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg print:hidden">
                     <h3 className="font-bold text-slate-800">Preview {type}</h3>
                     <div className="flex gap-2">
-                        <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                            <Printer size={18} /> Print / PDF
+                        <button 
+                            onClick={handleDownloadPdf} 
+                            disabled={isDownloading}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {isDownloading ? (
+                                <span>Generating...</span>
+                            ) : (
+                                <>
+                                    <Download size={18} /> Download PDF
+                                </>
+                            )}
                         </button>
                         <button onClick={onClose} className="p-2 text-slate-500 hover:bg-slate-200 rounded">
                             <X size={24} />
@@ -159,24 +182,33 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                 </div>
 
                 {/* Printable Area */}
-                <div className="p-8 md:p-12 flex-1 bg-white" id="invoice-print">
+                <div className="p-8 md:p-12 flex-1 bg-white relative" id="invoice-print">
+                    {/* Watermark for Cancelled */}
+                    {invoice.status === 'Cancelled' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                            <div className="transform -rotate-45 border-8 border-slate-200 text-slate-200 text-9xl font-black uppercase p-8 opacity-50">
+                                CANCELLED
+                            </div>
+                        </div>
+                    )}
+
                     {/* Header */}
-                    <div className="flex justify-between items-start mb-8 border-b-2 border-indigo-600 pb-6">
+                    <div className="flex justify-between items-start mb-8 border-b-2 border-indigo-600 pb-6 relative z-10">
                         <div>
                             <h1 className="text-3xl font-bold text-indigo-900 uppercase tracking-wide">{type === 'Invoice' ? 'Tax Invoice' : 'Proforma Invoice'}</h1>
                             <p className="text-slate-500 mt-1">#{invoice.number}</p>
                         </div>
                         <div className="text-right">
-                            <h2 className="text-xl font-bold text-slate-800">Ravechi Enterprises</h2>
-                            <p className="text-sm text-slate-600">404, Tech Park, SG Highway</p>
-                            <p className="text-sm text-slate-600">Ahmedabad, Gujarat - 380015</p>
-                            <p className="text-sm text-slate-600">GSTIN: <span className="font-semibold">24ABCDE1234F1Z5</span></p>
+                            <h2 className="text-xl font-bold text-slate-800">Ravechi Enterprises Pvt. Ltd</h2>
+                            <p className="text-sm text-slate-600">GF-15, Silverline complex, Opp. BBC Tower</p>
+                            <p className="text-sm text-slate-600">Sayajiunj, Vadodara, Gujarat</p>
+                            <p className="text-sm text-slate-600">GSTIN: <span className="font-semibold">24AAICR0144B1Z0</span></p>
                             <p className="text-sm text-slate-600">Email: accounts@ravechi.com</p>
                         </div>
                     </div>
 
                     {/* Details Grid */}
-                    <div className="flex flex-col md:flex-row justify-between gap-8 mb-8">
+                    <div className="flex flex-col md:flex-row justify-between gap-8 mb-8 relative z-10">
                         <div className="flex-1">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bill To</h3>
                             <div className="text-slate-800 font-semibold text-lg">{invoice.clientName}</div>
@@ -202,7 +234,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                     </div>
 
                     {/* Table */}
-                    <table className="w-full mb-8 border-collapse">
+                    <table className="w-full mb-8 border-collapse relative z-10">
                         <thead>
                             <tr className="bg-slate-50 border-y border-slate-200 text-xs uppercase text-slate-500 font-semibold tracking-wider text-right">
                                 <th className="py-3 px-2 text-left">#</th>
@@ -231,7 +263,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                     </table>
 
                     {/* Totals & Tax Breakdown */}
-                    <div className="flex justify-end mb-8">
+                    <div className="flex justify-end mb-8 relative z-10">
                         <div className="w-full md:w-1/2 lg:w-1/3 space-y-2">
                             <div className="flex justify-between text-sm text-slate-600">
                                 <span>Taxable Amount</span>
@@ -253,25 +285,25 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                     </div>
 
                     {/* Amount Words */}
-                    <div className="mb-8 p-3 bg-slate-50 rounded border border-slate-100">
+                    <div className="mb-8 p-3 bg-slate-50 rounded border border-slate-100 relative z-10">
                         <span className="text-xs font-bold text-slate-500 uppercase mr-2">Amount in Words:</span>
                         <span className="text-sm font-medium text-slate-800 italic">{numToWords(grandTotal)} Rupees Only</span>
                     </div>
 
                     {/* Footer / Bank Details */}
-                    <div className="grid grid-cols-2 gap-8 border-t border-slate-200 pt-8">
+                    <div className="grid grid-cols-2 gap-8 border-t border-slate-200 pt-8 relative z-10">
                         <div>
                             <h4 className="text-sm font-bold text-slate-800 mb-2">Bank Details</h4>
                             <p className="text-xs text-slate-600">Bank: HDFC Bank</p>
                             <p className="text-xs text-slate-600">A/c No: 50200012345678</p>
                             <p className="text-xs text-slate-600">IFSC: HDFC0001234</p>
-                            <p className="text-xs text-slate-600">Branch: Bodakdev, Ahmedabad</p>
+                            <p className="text-xs text-slate-600">Branch: Sayajigunj, Vadodara</p>
                         </div>
                         <div className="text-right flex flex-col justify-end">
                             <div className="h-16 mb-2">
                                 {/* Signature Placeholder */}
                             </div>
-                            <p className="text-sm font-bold text-slate-800">For, Ravechi Enterprises</p>
+                            <p className="text-sm font-bold text-slate-800">For, Ravechi Enterprises Pvt. Ltd</p>
                             <p className="text-xs text-slate-500 mt-1">Authorized Signatory</p>
                         </div>
                     </div>
@@ -328,9 +360,6 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                         </button>
                         <button onClick={() => handleEdit(inv)} className="text-slate-400 hover:text-indigo-600 p-1.5 rounded hover:bg-indigo-50" title="Edit">
                             <Pencil size={18} />
-                        </button>
-                        <button onClick={(e) => handleDeleteClick(inv.id, e)} className="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50" title="Delete">
-                            <Trash2 size={18} />
                         </button>
                     </div>
                 </td>
@@ -394,6 +423,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                                         <option value="Draft">Draft</option>
                                         <option value="Sent">Sent</option>
                                         <option value="Paid">Paid</option>
+                                        <option value="Cancelled">Cancelled</option>
                                     </select>
                                 </div>
                              </div>
@@ -432,7 +462,7 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                                         <td className="p-2">{item.quantity}</td>
                                         <td className="p-2">₹{item.rate}</td>
                                         <td className="p-2">{item.gstRate}%</td>
-                                        <td className="p-2"><button onClick={() => removeItem(item.id)} className="text-red-500"><Trash2 size={16}/></button></td>
+                                        <td className="p-2"><button onClick={() => removeItem(item.id)} className="text-red-500"><X size={16}/></button></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -466,38 +496,6 @@ const Invoices: React.FC<InvoicesProps> = ({ type }) => {
                 <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 sticky bottom-0">
                     <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded">Cancel</button>
                     <button onClick={saveInvoice} className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm font-medium">Save {type}</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setDeleteId(null)}></div>
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm relative z-10 p-6">
-                <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
-                        <AlertTriangle size={24} />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">Delete {type}?</h3>
-                    <p className="text-sm text-slate-500 mb-6">
-                        Are you sure you want to delete this {type}? This action cannot be undone.
-                    </p>
-                    <div className="flex gap-3 w-full">
-                        <button 
-                            onClick={() => setDeleteId(null)}
-                            className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={confirmDelete}
-                            className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm transition-colors"
-                        >
-                            Delete
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

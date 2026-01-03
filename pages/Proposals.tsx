@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Proposal } from '../types';
-import { Plus, FileText, CheckCircle, XCircle, Clock, X, Eye, Pencil, Trash2, Calendar, AlertTriangle, Printer } from 'lucide-react';
+import { Plus, FileText, CheckCircle, XCircle, Clock, X, Eye, Pencil, Trash2, Calendar, AlertTriangle, Printer, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const Proposals: React.FC = () => {
   // --- State ---
@@ -20,6 +22,7 @@ const Proposals: React.FC = () => {
 
   // View State
   const [viewProposal, setViewProposal] = useState<Proposal | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // --- Effects ---
   useEffect(() => {
@@ -71,6 +74,29 @@ const Proposals: React.FC = () => {
           setProposals([newProp, ...proposals]);
       }
       setIsFormModalOpen(false);
+  };
+
+  const handleDownloadPdf = async () => {
+      const element = document.getElementById('proposal-print');
+      if (!element || !viewProposal) return;
+      
+      setIsDownloading(true);
+      try {
+          const canvas = await html2canvas(element, { scale: 2 });
+          const imgData = canvas.toDataURL('image/png');
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Proposal_${viewProposal.title.replace(/\s+/g, '_')}.pdf`);
+      } catch (error) {
+          console.error('Error generating PDF:', error);
+          alert("Failed to generate PDF");
+      } finally {
+          setIsDownloading(false);
+      }
   };
 
   const getStatusBadge = (status: string) => {
@@ -213,8 +239,12 @@ const Proposals: React.FC = () => {
                 <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl print:hidden">
                     <h3 className="font-bold text-slate-700">Proposal Details</h3>
                     <div className="flex gap-2">
-                        <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
-                            <Printer size={16}/> Print
+                        <button 
+                            onClick={handleDownloadPdf}
+                            disabled={isDownloading}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {isDownloading ? 'Generating...' : <><Download size={16}/> Download PDF</>}
                         </button>
                         <button onClick={() => setIsViewModalOpen(false)} className="p-1.5 text-slate-500 hover:bg-slate-200 rounded">
                             <X size={20} />
@@ -230,9 +260,10 @@ const Proposals: React.FC = () => {
                              <p className="text-slate-500 mt-1 uppercase tracking-wider font-medium">{viewProposal.title}</p>
                         </div>
                         <div className="text-right">
-                             <div className="text-lg font-bold text-slate-800">Ravechi Enterprises</div>
-                             <div className="text-sm text-slate-600">Ahmedabad, Gujarat</div>
-                             <div className="text-sm text-slate-600">GSTIN: 24ABCDE1234F1Z5</div>
+                             <div className="text-lg font-bold text-slate-800">Ravechi Enterprises Pvt. Ltd</div>
+                             <div className="text-sm text-slate-600">GF-15, Silverline complex, Opp. BBC Tower</div>
+                             <div className="text-sm text-slate-600">Sayajiunj, Vadodara, Gujarat</div>
+                             <div className="text-sm text-slate-600">GSTIN: 24AAICR0144B1Z0</div>
                         </div>
                     </div>
 
@@ -280,7 +311,7 @@ const Proposals: React.FC = () => {
                     </div>
 
                     <div className="mt-12 pt-8 border-t border-dashed border-slate-300">
-                        <p className="text-center text-slate-400 text-sm italic">Thank you for considering Ravechi Enterprises for your business needs.</p>
+                        <p className="text-center text-slate-400 text-sm italic">Thank you for considering Ravechi Enterprises Pvt. Ltd for your business needs.</p>
                     </div>
                 </div>
             </div>

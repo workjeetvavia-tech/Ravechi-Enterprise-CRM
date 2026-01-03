@@ -78,7 +78,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onLogout }) => {
                  </div>
                  <div>
                     <label className="text-xs font-semibold text-slate-500 uppercase">Location</label>
-                    <p className="text-slate-800">Ahmedabad, Gujarat</p>
+                    <p className="text-slate-800">Vadodara, Gujarat</p>
                  </div>
              </div>
         </div>

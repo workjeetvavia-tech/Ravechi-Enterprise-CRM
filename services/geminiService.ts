@@ -13,7 +13,7 @@ export const generateColdEmail = async (lead: Lead): Promise<string> => {
   }
 
   const prompt = `
-    You are an expert sales representative for 'Ravechi Enterprises', a leading provider in Gujarat, India.
+    You are an expert sales representative for 'Ravechi Enterprises Pvt. Ltd', a leading provider in Vadodara, Gujarat, India.
     Write a professional, warm, and persuasive cold email to a potential client.
     
     Client Details:
@@ -46,7 +46,7 @@ export const analyzeLeadPotential = async (lead: Lead): Promise<string> => {
   }
 
   const prompt = `
-    Analyze the following sales lead for Ravechi Enterprises (Stationery and IT).
+    Analyze the following sales lead for Ravechi Enterprises Pvt. Ltd (Stationery and IT).
     Provide a brief strategic advice (bullet points) on how to close this deal.
     
     Lead: ${lead.name} (${lead.company})
@@ -75,7 +75,7 @@ export const suggestBundle = async (products: string[]): Promise<string> => {
   }
 
   const prompt = `
-    We sell Stationery and IT hardware at Ravechi Enterprises. A customer is interested in: ${products.join(", ")}.
+    We sell Stationery and IT hardware at Ravechi Enterprises Pvt. Ltd. A customer is interested in: ${products.join(", ")}.
     Suggest a logical "Business Starter Pack" or "Office Bundle" we could upsell them that combines both stationery and IT needs.
     Explain why this bundle adds value.
   `;
@@ -102,7 +102,7 @@ export const chatWithGemini = async (message: string, history: { role: string, p
             model: MODEL_NAME,
             history: history,
             config: {
-                systemInstruction: "You are a helpful AI assistant for Ravechi Enterprises CRM. You help with business advice, email drafting, CRM data analysis, and technical support for a Stationery and IT business in Gujarat.",
+                systemInstruction: "You are a helpful AI assistant for Ravechi Enterprises Pvt. Ltd CRM. You help with business advice, email drafting, CRM data analysis, and technical support for a Stationery and IT business in Vadodara, Gujarat.",
             }
         });
         

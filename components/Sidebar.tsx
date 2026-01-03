@@ -55,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isMobile
       `}>
         <div className="p-6 border-b border-slate-800 flex-shrink-0">
           <h1 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent break-words leading-tight">
-            Ravechi Enterprises
+            Ravechi Enterprises Pvt. Ltd
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-medium tracking-wide">CRM SOFTWARE</p>
         </div>

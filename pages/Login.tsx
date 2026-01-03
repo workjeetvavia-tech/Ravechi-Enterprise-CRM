@@ -41,7 +41,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigateToSignup }) => {
                 <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-teal-400 rounded-xl mb-6 flex items-center justify-center shadow-lg shadow-indigo-900/50">
                     <Briefcase className="text-white" size={24} />
                 </div>
-                <h1 className="text-3xl font-bold mb-2 tracking-tight">Ravechi Enterprises</h1>
+                <h1 className="text-3xl font-bold mb-2 tracking-tight">Ravechi Enterprises Pvt. Ltd</h1>
                 <p className="text-slate-400 font-medium">CRM Software</p>
             </div>
 
